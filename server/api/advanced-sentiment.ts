@@ -129,7 +129,8 @@ const NEWS_SOURCES: NewsSource[] = [
  * @param maxWords Maximum number of words to keep (approximately 512 tokens)
  * @returns Truncated text
  */
-function truncateText(text: string, maxWords: number = 400): string {
+function truncateText(text: string, maxWords: number = 200): string {
+  if (!text) return ''
   const words = text.split(/\s+/)
   if (words.length <= maxWords) return text
   return words.slice(0, maxWords).join(' ') + '...'
@@ -178,6 +179,8 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
           try {
             // Truncate text to stay within model's token limit
             const truncatedText = truncateText(text)
+            if (!truncatedText) return null
+
             const result = await hf.textClassification({
               model: 'distilbert-base-uncased-finetuned-sst-2-english',
               inputs: truncatedText
@@ -212,7 +215,8 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
   }
   
   if (results.length === 0) {
-    throw new Error('No valid sentiment results from any source')
+    console.warn('No valid sentiment results from any source, using static data')
+    return STATIC_DATA
   }
   
   // Calculate final sentiment score as average of all sources
