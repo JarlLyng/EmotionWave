@@ -17,14 +17,18 @@
       </span>
     </button>
     <div v-if="isPlaying" class="volume-control">
-      <input 
-        type="range" 
-        v-model="volume" 
-        min="0" 
-        max="1" 
-        step="0.1"
-        class="volume-slider"
-        title="Justér lydstyrke"
+      <input
+        type="range"
+        v-model="volume"
+        min="0"
+        max="1"
+        step="0.01"
+        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+        :style="{
+          background: `linear-gradient(to right, ${color} 0%, ${color} ${volume * 100}%, #e5e7eb ${volume * 100}%, #e5e7eb 100%)`
+        }"
+        @input="updateVolume"
+        appearance="none"
       />
     </div>
   </div>
@@ -42,6 +46,7 @@ const isPlaying = ref(false)
 const isLoading = ref(false)
 const needsInteraction = ref(true)
 const volume = ref(0.5)
+const color = ref('#4F46E5') // Indigo-600
 let synth: Tone.PolySynth | null = null
 let reverb: Tone.Reverb | null = null
 let filter: Tone.Filter | null = null
@@ -231,6 +236,11 @@ watch(volume, (newVolume) => {
     Tone.Destination.volume.value = db
   }
 })
+
+function updateVolume(event: Event) {
+  const target = event.target as HTMLInputElement
+  volume.value = parseFloat(target.value)
+}
 
 onUnmounted(() => {
   synth?.dispose()
