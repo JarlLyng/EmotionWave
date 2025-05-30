@@ -63,6 +63,24 @@ let cachedData: SentimentData | null = null
 // Initialize HuggingFace client
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY)
 
+// Static fallback data for GitHub Pages
+const STATIC_DATA: SentimentData = {
+  score: 0.86,
+  timestamp: Date.now(),
+  sources: [
+    {
+      name: 'Reuters',
+      score: 0.97,
+      articles: 5
+    },
+    {
+      name: 'Al Jazeera',
+      score: 0.76,
+      articles: 5
+    }
+  ]
+}
+
 /**
  * News sources to analyze for sentiment
  * Each source should have a valid URL and CSS selector for finding articles
@@ -220,6 +238,11 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
  * @throws Error with 500 status code if sentiment analysis fails
  */
 export default defineEventHandler(async (event) => {
+  // Check if we're in production (GitHub Pages)
+  if (process.env.NODE_ENV === 'production') {
+    return STATIC_DATA
+  }
+
   // Check if we have valid cached data
   if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
     console.log('Returning cached sentiment data')
