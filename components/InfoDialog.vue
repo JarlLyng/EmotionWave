@@ -18,15 +18,15 @@
       @click="isOpen = false"
     >
       <div 
-        class="bg-white/10 backdrop-blur-md rounded-lg p-6 max-w-2xl w-full text-white"
+        class="bg-white/10 backdrop-blur-md rounded-lg p-6 max-w-2xl w-full text-white border border-white/10"
         @click.stop
       >
         <div class="flex justify-between items-start mb-4">
-          <h2 class="text-2xl font-bold">About EmotionWave</h2>
+          <h2 class="text-2xl font-bold">Om EmotionWave</h2>
           <button 
             @click="isOpen = false"
             class="text-white/70 hover:text-white transition-colors"
-            aria-label="Close dialog"
+            aria-label="Luk dialog"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -36,40 +36,40 @@
 
         <div class="space-y-4">
           <p>
-            EmotionWave is an interactive art installation that visualizes the world's mood in real-time. 
-            Through sentiment analysis of news articles from various sources, the installation creates a 
-            dynamic visual and audio experience that reflects the current global sentiment.
+            EmotionWave er et interaktivt kunstværk der visualiserer verdens stemning i realtid. 
+            Gennem sentiment analyse af nyhedsartikler fra forskellige kilder, skaber installationen 
+            en dynamisk visuel og lydoplevelse der afspejler den aktuelle globale stemning.
           </p>
 
-          <h3 class="text-xl font-semibold mt-6">How it works</h3>
+          <h3 class="text-xl font-semibold mt-6">Sådan virker det</h3>
           <ul class="list-disc list-inside space-y-2">
-            <li>News articles are analyzed every 10 minutes using AI</li>
-            <li>The sentiment score ranges from -1 (negative) to +1 (positive)</li>
-            <li>Visual elements and ambient music adapt to the sentiment</li>
-            <li>Interactive particles respond to your mouse movements</li>
+            <li>Nyhedsartikler analyseres hver 10. minut med AI</li>
+            <li>Sentiment scoren går fra -1 (negativ) til +1 (positiv)</li>
+            <li>Visuelle elementer og ambient musik tilpasser sig sentimenten</li>
+            <li>Interaktive partikler reagerer på dine musebevægelser</li>
           </ul>
 
-          <h3 class="text-xl font-semibold mt-6">Visual Elements</h3>
+          <h3 class="text-xl font-semibold mt-6">Visuelle elementer</h3>
           <ul class="list-disc list-inside space-y-2">
-            <li>Particle system that changes color and movement based on sentiment</li>
-            <li>Sentiment meter showing the current global mood</li>
-            <li>Ambient music that shifts between minor and major scales</li>
+            <li>Partikelsystem der ændrer farve og bevægelse baseret på sentiment</li>
+            <li>Sentiment meter der viser den aktuelle globale stemning</li>
+            <li>Ambient musik der skifter mellem mol og dur skalaer</li>
           </ul>
 
-          <h3 class="text-xl font-semibold mt-6">News Sources</h3>
+          <h3 class="text-xl font-semibold mt-6">Nyhedskilder</h3>
           <ul class="list-disc list-inside space-y-2">
-            <li>DR (Denmark)</li>
-            <li>Politiken (Denmark)</li>
-            <li>Berlingske (Denmark)</li>
-            <li>BBC (United Kingdom)</li>
-            <li>The Guardian (United Kingdom)</li>
+            <li>DR (Danmark)</li>
+            <li>Politiken (Danmark)</li>
+            <li>Berlingske (Danmark)</li>
+            <li>BBC (Storbritannien)</li>
+            <li>The Guardian (Storbritannien)</li>
             <li>Reuters (International)</li>
             <li>Al Jazeera (International)</li>
           </ul>
 
           <div class="mt-6 text-sm text-white/70">
-            <p>Created with Nuxt 3, Three.js, and Tone.js</p>
-            <p>Sentiment analysis powered by HuggingFace</p>
+            <p>Skabt med Nuxt 3, Three.js, og Tone.js</p>
+            <p>Sentiment analyse drevet af HuggingFace</p>
           </div>
         </div>
       </div>
@@ -81,4 +81,16 @@
 import { ref } from 'vue'
 
 const isOpen = ref(false)
-</script> 
+</script>
+
+<style scoped>
+.dialog-enter-active,
+.dialog-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.dialog-enter-from,
+.dialog-leave-to {
+  opacity: 0;
+}
+</style> 
