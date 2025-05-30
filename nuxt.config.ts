@@ -6,6 +6,7 @@ export default defineNuxtConfig({
   modules: ['@nuxtjs/tailwindcss'],
   pages: false,
   app: {
+    baseURL: '/EmotionWave/',
     head: {
       title: 'EmotionWave - Verdens Stemning i Realtid',
       meta: [
@@ -37,6 +38,12 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    }
+  },
+  ssr: true,
+  nitro: {
+    prerender: {
+      routes: ['/']
     }
   }
 })
