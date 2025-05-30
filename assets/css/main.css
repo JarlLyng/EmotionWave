@@ -1,6 +1,24 @@
-@tailwind base;
-@tailwind components;
+@import "tailwindcss/preflight";
 @tailwind utilities;
+
+/* Custom styles */
+@layer utilities {
+  .sentiment-negative {
+    --sentiment-color: #ff4444;
+  }
+  
+  .sentiment-neutral-negative {
+    --sentiment-color: #ffbb33;
+  }
+  
+  .sentiment-neutral-positive {
+    --sentiment-color: #00C851;
+  }
+  
+  .sentiment-positive {
+    --sentiment-color: #00C851;
+  }
+}
 
 body {
   background-color: black;
