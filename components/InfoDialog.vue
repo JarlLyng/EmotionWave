@@ -59,8 +59,12 @@
           <h3 class="text-xl font-semibold mt-6">News Sources</h3>
           <ul class="list-disc list-inside space-y-2">
             <li>DR (Denmark)</li>
+            <li>Politiken (Denmark)</li>
+            <li>Berlingske (Denmark)</li>
             <li>BBC (United Kingdom)</li>
             <li>The Guardian (United Kingdom)</li>
+            <li>Reuters (International)</li>
+            <li>Al Jazeera (International)</li>
           </ul>
 
           <div class="mt-6 text-sm text-white/70">

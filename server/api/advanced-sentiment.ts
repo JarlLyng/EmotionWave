@@ -71,19 +71,51 @@ const NEWS_SOURCES: NewsSource[] = [
   {
     name: 'DR',
     url: 'https://www.dr.dk/nyheder',
-    selector: 'article'
+    selector: '.dre-teaser__link'
+  },
+  {
+    name: 'Politiken',
+    url: 'https://politiken.dk/',
+    selector: '.teaser__link'
+  },
+  {
+    name: 'Berlingske',
+    url: 'https://www.berlingske.dk/',
+    selector: '.teaser__link'
   },
   {
     name: 'BBC',
     url: 'https://www.bbc.com/news',
-    selector: 'article'
+    selector: '.gs-c-promo-link'
   },
   {
     name: 'The Guardian',
     url: 'https://www.theguardian.com/international',
-    selector: 'article'
+    selector: '.fc-item__link'
+  },
+  {
+    name: 'Reuters',
+    url: 'https://www.reuters.com/',
+    selector: '.story-card'
+  },
+  {
+    name: 'Al Jazeera',
+    url: 'https://www.aljazeera.com/',
+    selector: '.article-card'
   }
 ]
+
+/**
+ * Truncates text to a maximum number of words to stay within model's token limit
+ * @param text The text to truncate
+ * @param maxWords Maximum number of words to keep (approximately 512 tokens)
+ * @returns Truncated text
+ */
+function truncateText(text: string, maxWords: number = 400): string {
+  const words = text.split(/\s+/)
+  if (words.length <= maxWords) return text
+  return words.slice(0, maxWords).join(' ') + '...'
+}
 
 /**
  * Fetches and analyzes news articles from multiple sources
@@ -126,9 +158,11 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
           if (!text) return null
           
           try {
+            // Truncate text to stay within model's token limit
+            const truncatedText = truncateText(text)
             const result = await hf.textClassification({
               model: 'distilbert-base-uncased-finetuned-sst-2-english',
-              inputs: text
+              inputs: truncatedText
             })
             return result[0] as SentimentResult
           } catch (error) {
