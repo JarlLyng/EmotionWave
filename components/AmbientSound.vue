@@ -28,7 +28,7 @@
           background: `linear-gradient(to right, ${color} 0%, ${color} ${volume * 100}%, #e5e7eb ${volume * 100}%, #e5e7eb 100%)`
         }"
         @input="updateVolume"
-        appearance="none"
+        style="appearance: none; -webkit-appearance: none;"
       />
     </div>
   </div>
@@ -334,13 +334,16 @@ onUnmounted(() => {
 .volume-slider {
   width: 100%;
   height: 4px;
+  appearance: none;
   -webkit-appearance: none;
+  -moz-appearance: none;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 2px;
   outline: none;
 }
 
 .volume-slider::-webkit-slider-thumb {
+  appearance: none;
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
@@ -350,11 +353,9 @@ onUnmounted(() => {
   transition: all 0.2s ease;
 }
 
-.volume-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-}
-
 .volume-slider::-moz-range-thumb {
+  appearance: none;
+  -moz-appearance: none;
   width: 16px;
   height: 16px;
   background: white;
@@ -362,6 +363,10 @@ onUnmounted(() => {
   cursor: pointer;
   border: none;
   transition: all 0.2s ease;
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
 }
 
 .volume-slider::-moz-range-thumb:hover {

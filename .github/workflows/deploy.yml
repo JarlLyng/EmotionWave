@@ -34,7 +34,7 @@ jobs:
         run: npm run generate
         env:
           HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
-          NUXT_PUBLIC_SITE_URL: ${{ github.server_url }}/${{ github.repository }}
+          NUXT_PUBLIC_SITE_URL: 'https://jarllyng.github.io/EmotionWave'
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
