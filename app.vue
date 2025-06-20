@@ -26,7 +26,7 @@ const { sentimentScore, isLoading, error, fetchSentiment } = useSentiment()
 // Register service worker for PWA functionality
 onMounted(() => {
   if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('/EmotionWave/sw.js', { scope: '/EmotionWave/' })
       .then((registration) => {
         console.log('SW registered: ', registration)
       })

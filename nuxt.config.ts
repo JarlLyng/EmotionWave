@@ -49,21 +49,21 @@ export default defineNuxtConfig({
         { name: 'viewport', content: 'width=device-width, initial-scale=1, user-scalable=no' },
         { name: 'description', content: 'A living website that reacts to the world\'s mood' },
         { name: 'theme-color', content: '#000000' },
-        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
         { name: 'apple-mobile-web-app-title', content: 'EmotionWave' },
         { property: 'og:title', content: 'EmotionWave' },
         { property: 'og:description', content: 'A living website that reacts to the world\'s mood' },
         { property: 'og:type', content: 'website' },
-        { property: 'og:image', content: '/og-image.png' },
+        { property: 'og:image', content: '/EmotionWave/og-image.png' },
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:title', content: 'EmotionWave' },
         { name: 'twitter:description', content: 'A living website that reacts to the world\'s mood' }
       ],
       link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
-        { rel: 'manifest', href: '/manifest.json' }
+        { rel: 'icon', type: 'image/x-icon', href: '/EmotionWave/favicon.ico' },
+        { rel: 'apple-touch-icon', href: '/EmotionWave/apple-touch-icon.png' },
+        { rel: 'manifest', href: '/EmotionWave/manifest.json' }
       ]
     }
   }
