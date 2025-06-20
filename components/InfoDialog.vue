@@ -26,7 +26,7 @@
         @click="isOpen = false"
       >
         <div 
-          class="bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-xl rounded-3xl p-10 max-w-4xl w-full border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] relative"
+          class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-50"
           @click.stop
         >
           <!-- Animated background -->
@@ -183,6 +183,16 @@ const isOpen = ref(false)
   background: linear-gradient(to bottom, rgba(59, 130, 246, 0.7), rgba(147, 51, 234, 0.7));
 }
 
+/* Force proper padding on dialog */
+.bg-gradient-to-br {
+  padding: 3rem !important;
+}
+
+/* Additional padding for dialog content */
+.relative.z-10 {
+  padding: 1rem;
+}
+
 /* Smooth animations */
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -221,8 +231,8 @@ const isOpen = ref(false)
     max-width: 95vw;
   }
   
-  .p-10 {
-    padding: 1.5rem;
+  .bg-gradient-to-br {
+    padding: 1.5rem !important;
   }
   
   .text-5xl {
