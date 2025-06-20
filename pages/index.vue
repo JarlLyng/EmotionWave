@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-black text-white">
+  <div class="min-h-screen bg-black text-white p-6">
     <VisualLayer :sentiment-score="sentimentScore" />
     <AmbientSound :sentiment-score="sentimentScore" />
     <SentimentMeter 

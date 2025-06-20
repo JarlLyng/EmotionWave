@@ -61,47 +61,49 @@ const formatScore = computed(() => {
 <style scoped>
 .sentiment-meter {
   position: fixed;
-  bottom: 2rem;
-  left: 2rem;
+  bottom: 3rem;
+  left: 3rem;
   background-color: rgba(0, 0, 0, 0.8);
-  padding: 1.5rem;
-  border-radius: 1rem;
+  padding: 2rem;
+  border-radius: 1.5rem;
   backdrop-filter: blur(10px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   pointer-events: none;
   user-select: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .meter-container {
-  width: 200px;
+  width: 250px;
 }
 
 .meter-track {
-  height: 8px;
+  height: 12px;
   background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  border-radius: 6px;
   overflow: hidden;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .meter-fill {
   height: 100%;
   transition: width 0.5s ease-out, background-color 0.5s ease-out;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .meter-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.5rem;
 }
 
 .score-display {
   text-align: center;
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: bold;
-  margin-top: 0.5rem;
+  margin-top: 1rem;
   transition: color 0.5s ease-out;
 }
 
@@ -112,5 +114,22 @@ const formatScore = computed(() => {
 
 .label:hover {
   opacity: 1;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .sentiment-meter {
+    bottom: 2rem;
+    left: 2rem;
+    padding: 1.5rem;
+  }
+  
+  .meter-container {
+    width: 200px;
+  }
+  
+  .score-display {
+    font-size: 1.5rem;
+  }
 }
 </style> 
