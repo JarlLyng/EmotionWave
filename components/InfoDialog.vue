@@ -3,10 +3,10 @@
     <!-- Info Button -->
     <button 
       @click="isOpen = true"
-      class="fixed top-4 right-4 p-3 rounded-full bg-black/20 hover:bg-black/40 transition-all duration-300 backdrop-blur-md border border-white/10 hover:border-white/30 shadow-lg z-50 group"
+      class="fixed top-6 right-6 p-4 rounded-full bg-black/20 hover:bg-black/40 transition-all duration-300 backdrop-blur-md border border-white/10 hover:border-white/30 shadow-lg z-50 group"
       aria-label="Show information"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white group-hover:scale-110 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white group-hover:scale-110 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
       </svg>
     </button>
@@ -22,11 +22,11 @@
     >
       <div 
         v-if="isOpen"
-        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-50"
         @click="isOpen = false"
       >
         <div 
-          class="bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-xl rounded-3xl p-8 max-w-3xl w-full border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] relative"
+          class="bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-xl rounded-3xl p-10 max-w-4xl w-full border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] relative"
           @click.stop
         >
           <!-- Animated background -->
@@ -35,29 +35,29 @@
           <!-- Content -->
           <div class="relative z-10">
             <!-- Header -->
-            <div class="flex justify-between items-start mb-8">
+            <div class="flex justify-between items-start mb-10">
               <div>
-                <h2 class="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+                <h2 class="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
                   About EmotionWave
                 </h2>
-                <div class="w-20 h-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full"></div>
+                <div class="w-24 h-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full"></div>
               </div>
               <button 
                 @click="isOpen = false"
-                class="text-white/60 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full group"
+                class="text-white/60 hover:text-white transition-colors p-3 hover:bg-white/10 rounded-full group"
                 aria-label="Close dialog"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
             <!-- Content -->
-            <div class="space-y-8 overflow-y-auto max-h-[60vh] pr-2">
+            <div class="space-y-10 overflow-y-auto max-h-[60vh] pr-4">
               <!-- Description -->
-              <div class="bg-white/5 rounded-2xl p-6 border border-white/5">
-                <p class="text-lg leading-relaxed text-white/90">
+              <div class="bg-white/5 rounded-2xl p-8 border border-white/5">
+                <p class="text-xl leading-relaxed text-white/90">
                   EmotionWave is an interactive artwork that visualizes the world's mood in real-time. 
                   Through sentiment analysis of news articles from various sources, the installation creates 
                   a dynamic visual and audio experience that reflects the current global sentiment.
@@ -65,86 +65,86 @@
               </div>
 
               <!-- How it works -->
-              <div class="space-y-4">
-                <h3 class="text-2xl font-semibold text-white flex items-center gap-3">
-                  <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+              <div class="space-y-6">
+                <h3 class="text-3xl font-semibold text-white flex items-center gap-4">
+                  <div class="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
                   How it works
                 </h3>
-                <div class="grid gap-3">
-                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
-                    <div class="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <p class="text-white/80">News articles are analyzed every 30 seconds using AI</p>
+                <div class="grid gap-4">
+                  <div class="flex items-start gap-4 p-6 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-3 h-3 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80 text-lg">News articles are analyzed every 30 seconds using AI</p>
                   </div>
-                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
-                    <div class="w-2 h-2 bg-purple-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <p class="text-white/80">Sentiment score ranges from -1 (negative) to +1 (positive)</p>
+                  <div class="flex items-start gap-4 p-6 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-3 h-3 bg-purple-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80 text-lg">Sentiment score ranges from -1 (negative) to +1 (positive)</p>
                   </div>
-                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
-                    <div class="w-2 h-2 bg-pink-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <p class="text-white/80">Visual elements and ambient music adapt to the sentiment</p>
+                  <div class="flex items-start gap-4 p-6 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-3 h-3 bg-pink-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80 text-lg">Visual elements and ambient music adapt to the sentiment</p>
                   </div>
-                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
-                    <div class="w-2 h-2 bg-indigo-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <p class="text-white/80">Interactive particles respond to your mouse movements</p>
+                  <div class="flex items-start gap-4 p-6 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-3 h-3 bg-indigo-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80 text-lg">Interactive particles respond to your mouse movements</p>
                   </div>
                 </div>
               </div>
 
               <!-- Visual elements -->
-              <div class="space-y-4">
-                <h3 class="text-2xl font-semibold text-white flex items-center gap-3">
-                  <div class="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+              <div class="space-y-6">
+                <h3 class="text-3xl font-semibold text-white flex items-center gap-4">
+                  <div class="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
                   Visual elements
                 </h3>
-                <div class="grid gap-3">
-                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
-                    <div class="w-2 h-2 bg-purple-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <p class="text-white/80">Particle system that changes color and movement based on sentiment</p>
+                <div class="grid gap-4">
+                  <div class="flex items-start gap-4 p-6 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-3 h-3 bg-purple-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80 text-lg">Particle system that changes color and movement based on sentiment</p>
                   </div>
-                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
-                    <div class="w-2 h-2 bg-pink-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <p class="text-white/80">Sentiment meter showing the current global mood</p>
+                  <div class="flex items-start gap-4 p-6 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-3 h-3 bg-pink-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80 text-lg">Sentiment meter showing the current global mood</p>
                   </div>
-                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
-                    <div class="w-2 h-2 bg-indigo-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <p class="text-white/80">Ambient music that shifts between minor and major scales</p>
+                  <div class="flex items-start gap-4 p-6 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-3 h-3 bg-indigo-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80 text-lg">Ambient music that shifts between minor and major scales</p>
                   </div>
                 </div>
               </div>
 
               <!-- News sources -->
-              <div class="space-y-4">
-                <h3 class="text-2xl font-semibold text-white flex items-center gap-3">
-                  <div class="w-2 h-2 bg-pink-400 rounded-full animate-pulse"></div>
+              <div class="space-y-6">
+                <h3 class="text-3xl font-semibold text-white flex items-center gap-4">
+                  <div class="w-3 h-3 bg-pink-400 rounded-full animate-pulse"></div>
                   News sources
                 </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div class="p-4 bg-white/5 rounded-xl border border-white/5">
-                    <p class="text-white/80 font-medium">GDELT API</p>
-                    <p class="text-white/60 text-sm">Global news sentiment data</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="p-6 bg-white/5 rounded-xl border border-white/5">
+                    <p class="text-white/80 font-medium text-lg">GDELT API</p>
+                    <p class="text-white/60 text-base">Global news sentiment data</p>
                   </div>
-                  <div class="p-4 bg-white/5 rounded-xl border border-white/5">
-                    <p class="text-white/80 font-medium">HuggingFace</p>
-                    <p class="text-white/60 text-sm">AI sentiment analysis</p>
+                  <div class="p-6 bg-white/5 rounded-xl border border-white/5">
+                    <p class="text-white/80 font-medium text-lg">HuggingFace</p>
+                    <p class="text-white/60 text-base">AI sentiment analysis</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- Footer -->
-            <div class="pt-6 mt-8 border-t border-white/10">
-              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-sm text-white/60">
-                <div class="flex items-center gap-4">
-                  <span class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
+            <div class="pt-8 mt-10 border-t border-white/10">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 text-base text-white/60">
+                <div class="flex items-center gap-6">
+                  <span class="flex items-center gap-3">
+                    <div class="w-3 h-3 bg-blue-400 rounded-full"></div>
                     Nuxt 3
                   </span>
-                  <span class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-purple-400 rounded-full"></div>
+                  <span class="flex items-center gap-3">
+                    <div class="w-3 h-3 bg-purple-400 rounded-full"></div>
                     Three.js
                   </span>
-                  <span class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-pink-400 rounded-full"></div>
+                  <span class="flex items-center gap-3">
+                    <div class="w-3 h-3 bg-pink-400 rounded-full"></div>
                     Tone.js
                   </span>
                 </div>
@@ -167,7 +167,7 @@ const isOpen = ref(false)
 <style scoped>
 /* Custom scrollbar */
 .overflow-y-auto::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .overflow-y-auto::-webkit-scrollbar-track {
@@ -176,7 +176,7 @@ const isOpen = ref(false)
 
 .overflow-y-auto::-webkit-scrollbar-thumb {
   background: linear-gradient(to bottom, rgba(59, 130, 246, 0.5), rgba(147, 51, 234, 0.5));
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
@@ -217,16 +217,36 @@ const isOpen = ref(false)
 
 /* Mobile responsiveness */
 @media (max-width: 768px) {
-  .max-w-3xl {
+  .max-w-4xl {
     max-width: 95vw;
   }
   
-  .p-8 {
+  .p-10 {
     padding: 1.5rem;
   }
   
-  .text-4xl {
-    font-size: 2rem;
+  .text-5xl {
+    font-size: 2.5rem;
+  }
+  
+  .text-3xl {
+    font-size: 1.75rem;
+  }
+  
+  .p-6 {
+    padding: 1rem;
+  }
+  
+  .gap-4 {
+    gap: 0.75rem;
+  }
+  
+  .space-y-10 {
+    margin-top: 2rem;
+  }
+  
+  .space-y-6 {
+    margin-top: 1.5rem;
   }
 }
 </style> 
