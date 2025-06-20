@@ -3,10 +3,10 @@
     <!-- Info Button -->
     <button 
       @click="isOpen = true"
-      class="fixed top-4 right-4 p-3 rounded-full bg-black/30 hover:bg-black/50 transition-all duration-300 backdrop-blur-md border border-white/10 hover:border-white/20 shadow-lg z-50"
+      class="fixed top-4 right-4 p-3 rounded-full bg-black/20 hover:bg-black/40 transition-all duration-300 backdrop-blur-md border border-white/10 hover:border-white/30 shadow-lg z-50 group"
       aria-label="Show information"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white group-hover:scale-110 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
       </svg>
     </button>
@@ -22,68 +22,134 @@
     >
       <div 
         v-if="isOpen"
-        class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
         @click="isOpen = false"
       >
         <div 
-          class="bg-black/40 backdrop-blur-xl rounded-2xl p-12 max-w-2xl w-full text-red-500 border border-white/5 shadow-2xl overflow-y-auto max-h-[90vh]"
+          class="bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-xl rounded-3xl p-8 max-w-3xl w-full border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] relative"
           @click.stop
         >
-          <div class="flex justify-between items-start mb-12">
-            <h2 class="text-3xl font-bold text-red-500">About EmotionWave</h2>
-            <button 
-              @click="isOpen = false"
-              class="text-red-500 hover:text-red-400 transition-colors p-2 hover:bg-white/5 rounded-full"
-              aria-label="Close dialog"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div class="space-y-12">
-            <p class="text-lg leading-relaxed text-red-500">
-              EmotionWave is an interactive artwork that visualizes the world's mood in real-time. 
-              Through sentiment analysis of news articles from various sources, the installation creates 
-              a dynamic visual and audio experience that reflects the current global sentiment.
-            </p>
-
-            <div class="space-y-6">
-              <h3 class="text-2xl font-semibold text-red-500">How it works</h3>
-              <ul class="space-y-4 list-disc pl-10">
-                <li class="text-red-500">News articles are analyzed every 10 minutes using AI</li>
-                <li class="text-red-500">Sentiment score ranges from -1 (negative) to +1 (positive)</li>
-                <li class="text-red-500">Visual elements and ambient music adapt to the sentiment</li>
-                <li class="text-red-500">Interactive particles respond to your mouse movements</li>
-              </ul>
+          <!-- Animated background -->
+          <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 animate-pulse"></div>
+          
+          <!-- Content -->
+          <div class="relative z-10">
+            <!-- Header -->
+            <div class="flex justify-between items-start mb-8">
+              <div>
+                <h2 class="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+                  About EmotionWave
+                </h2>
+                <div class="w-20 h-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full"></div>
+              </div>
+              <button 
+                @click="isOpen = false"
+                class="text-white/60 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full group"
+                aria-label="Close dialog"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
 
-            <div class="space-y-6">
-              <h3 class="text-2xl font-semibold text-red-500">Visual elements</h3>
-              <ul class="space-y-4 list-disc pl-10">
-                <li class="text-red-500">Particle system that changes color and movement based on sentiment</li>
-                <li class="text-red-500">Sentiment meter showing the current global mood</li>
-                <li class="text-red-500">Ambient music that shifts between minor and major scales</li>
-              </ul>
+            <!-- Content -->
+            <div class="space-y-8 overflow-y-auto max-h-[60vh] pr-2">
+              <!-- Description -->
+              <div class="bg-white/5 rounded-2xl p-6 border border-white/5">
+                <p class="text-lg leading-relaxed text-white/90">
+                  EmotionWave is an interactive artwork that visualizes the world's mood in real-time. 
+                  Through sentiment analysis of news articles from various sources, the installation creates 
+                  a dynamic visual and audio experience that reflects the current global sentiment.
+                </p>
+              </div>
+
+              <!-- How it works -->
+              <div class="space-y-4">
+                <h3 class="text-2xl font-semibold text-white flex items-center gap-3">
+                  <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                  How it works
+                </h3>
+                <div class="grid gap-3">
+                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80">News articles are analyzed every 30 seconds using AI</p>
+                  </div>
+                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-2 h-2 bg-purple-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80">Sentiment score ranges from -1 (negative) to +1 (positive)</p>
+                  </div>
+                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-2 h-2 bg-pink-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80">Visual elements and ambient music adapt to the sentiment</p>
+                  </div>
+                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-2 h-2 bg-indigo-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80">Interactive particles respond to your mouse movements</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Visual elements -->
+              <div class="space-y-4">
+                <h3 class="text-2xl font-semibold text-white flex items-center gap-3">
+                  <div class="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                  Visual elements
+                </h3>
+                <div class="grid gap-3">
+                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-2 h-2 bg-purple-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80">Particle system that changes color and movement based on sentiment</p>
+                  </div>
+                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-2 h-2 bg-pink-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80">Sentiment meter showing the current global mood</p>
+                  </div>
+                  <div class="flex items-start gap-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-2 h-2 bg-indigo-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <p class="text-white/80">Ambient music that shifts between minor and major scales</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- News sources -->
+              <div class="space-y-4">
+                <h3 class="text-2xl font-semibold text-white flex items-center gap-3">
+                  <div class="w-2 h-2 bg-pink-400 rounded-full animate-pulse"></div>
+                  News sources
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div class="p-4 bg-white/5 rounded-xl border border-white/5">
+                    <p class="text-white/80 font-medium">GDELT API</p>
+                    <p class="text-white/60 text-sm">Global news sentiment data</p>
+                  </div>
+                  <div class="p-4 bg-white/5 rounded-xl border border-white/5">
+                    <p class="text-white/80 font-medium">HuggingFace</p>
+                    <p class="text-white/60 text-sm">AI sentiment analysis</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div class="space-y-6">
-              <h3 class="text-2xl font-semibold text-red-500">News sources</h3>
-              <ul class="space-y-4 list-disc pl-10">
-                <li class="text-red-500">DR (Denmark)</li>
-                <li class="text-red-500">Politiken (Denmark)</li>
-                <li class="text-red-500">Berlingske (Denmark)</li>
-                <li class="text-red-500">BBC (United Kingdom)</li>
-                <li class="text-red-500">The Guardian (United Kingdom)</li>
-                <li class="text-red-500">Reuters (International)</li>
-                <li class="text-red-500">Al Jazeera (International)</li>
-              </ul>
-            </div>
-
-            <div class="pt-8 border-t border-red-500/20 text-sm text-red-500/60">
-              <p>Created with Nuxt 3, Three.js, and Tone.js</p>
-              <p>Sentiment analysis powered by HuggingFace</p>
+            <!-- Footer -->
+            <div class="pt-6 mt-8 border-t border-white/10">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-sm text-white/60">
+                <div class="flex items-center gap-4">
+                  <span class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
+                    Nuxt 3
+                  </span>
+                  <span class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-purple-400 rounded-full"></div>
+                    Three.js
+                  </span>
+                  <span class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-pink-400 rounded-full"></div>
+                    Tone.js
+                  </span>
+                </div>
+                <p class="text-white/40">Sentiment analysis powered by HuggingFace</p>
+              </div>
             </div>
           </div>
         </div>
@@ -99,37 +165,68 @@ const isOpen = ref(false)
 </script>
 
 <style scoped>
-/* Basic transitions */
-.dialog-enter-active,
-.dialog-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.dialog-enter-from,
-.dialog-leave-to {
-  opacity: 0;
-}
-
 /* Custom scrollbar */
-.max-w-2xl::-webkit-scrollbar {
-  width: 8px;
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
 }
 
-.max-w-2xl::-webkit-scrollbar-track {
+.overflow-y-auto::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.max-w-2xl::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, rgba(59, 130, 246, 0.5), rgba(147, 51, 234, 0.5));
+  border-radius: 3px;
 }
 
-/* List styling */
-ul {
-  list-style-type: disc;
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, rgba(59, 130, 246, 0.7), rgba(147, 51, 234, 0.7));
 }
 
-li {
-  margin-left: 1rem;
+/* Smooth animations */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Gradient text animation */
+.bg-gradient-to-r {
+  background-size: 200% 200%;
+  animation: gradient 3s ease infinite;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .max-w-3xl {
+    max-width: 95vw;
+  }
+  
+  .p-8 {
+    padding: 1.5rem;
+  }
+  
+  .text-4xl {
+    font-size: 2rem;
+  }
 }
 </style> 
