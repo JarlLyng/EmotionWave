@@ -1,10 +1,8 @@
 const CACHE_NAME = 'emotionwave-v1'
 const urlsToCache = [
-  '/',
-  '/_nuxt/entry.BPg8foqB.css',
-  '/_nuxt/BmEoywgy.js',
-  '/favicon.ico',
-  '/manifest.json'
+  '/EmotionWave/',
+  '/EmotionWave/favicon.ico',
+  '/EmotionWave/manifest.json'
 ]
 
 // Install event
@@ -13,7 +11,18 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Opened cache')
-        return cache.addAll(urlsToCache)
+        // Cache kun de filer vi ved eksisterer
+        return cache.addAll(urlsToCache.filter(url => {
+          // Undgå at cache dynamiske filer med hash
+          return !url.includes('_nuxt/') || url.includes('entry.') || url.includes('favicon.ico') || url.includes('manifest.json')
+        }))
+      })
+      .catch((error) => {
+        console.log('Cache addAll failed:', error)
+        // Hvis addAll fejler, cache kun de grundlæggende filer
+        return caches.open(CACHE_NAME).then(cache => {
+          return cache.add('/EmotionWave/')
+        })
       })
   )
 })
@@ -25,8 +34,14 @@ self.addEventListener('fetch', (event) => {
       .then((response) => {
         // Return cached version or fetch from network
         return response || fetch(event.request)
-      }
-    )
+      })
+      .catch(() => {
+        // Hvis både cache og fetch fejler, return en fallback
+        if (event.request.destination === 'document') {
+          return caches.match('/EmotionWave/')
+        }
+        return new Response('', { status: 404 })
+      })
   )
 })
 
