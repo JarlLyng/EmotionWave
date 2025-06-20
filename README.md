@@ -10,10 +10,11 @@ Create a data-driven artwork where the website changes in real-time based on glo
 
 - **Framework**: Nuxt 3 + Vite
 - **UI**: TailwindCSS
-- **Visuals**: Three.js for particle effects
-- **Audio**: Tone.js for generative ambient sound
+- **Visuals**: Three.js for particle effects (lazy loaded)
+- **Audio**: Tone.js for generative ambient sound (lazy loaded)
 - **Data**: HuggingFace for sentiment analysis
-- **News Sources**: DR, BBC, The Guardian
+- **News Sources**: GDELT API
+- **PWA**: Service Worker for offline functionality
 
 ## 🎨 Features
 
@@ -22,18 +23,28 @@ Create a data-driven artwork where the website changes in real-time based on glo
 - Color transitions based on mood
 - Interactive mouse-based particle movement
 - Smooth animations and transitions
+- Responsive design with mobile optimization
+- Loading states and performance optimizations
 
 ### Audio Experience
 - Generative ambient music using Tone.js
 - Musical scale changes based on sentiment (C minor for negative, C major for positive)
 - Reverb and delay effects for atmospheric sound
 - Volume control with smooth transitions
+- Lazy loading for better performance
 
 ### Sentiment Analysis
-- Real-time analysis of news articles
+- Real-time analysis of news articles via GDELT API
 - Multiple news sources for balanced sentiment
 - 10-minute cache to limit API calls
 - Sentiment score range: -1 (negative) to +1 (positive)
+- Fallback to static data in production
+
+### Progressive Web App (PWA)
+- Offline functionality with service worker
+- Installable on mobile devices
+- Fullscreen experience
+- Optimized for mobile performance
 
 ## 📊 Sentiment Visualization Mapping
 
@@ -49,9 +60,10 @@ Create a data-driven artwork where the website changes in real-time based on glo
 emotionwave/
 │
 ├── components/
-│   ├── VisualLayer.vue        # Dynamic visual background
+│   ├── VisualLayer.vue        # Dynamic visual background (optimized)
 │   ├── SentimentMeter.vue     # UI component for score display
-│   └── AmbientSound.vue       # Generative audio system
+│   ├── AmbientSound.vue       # Generative audio system (optimized)
+│   └── InfoDialog.vue         # Information dialog
 │
 ├── composables/
 │   └── useSentiment.ts        # Data fetching and interpretation
@@ -62,6 +74,10 @@ emotionwave/
 ├── server/
 │   └── api/
 │       └── advanced-sentiment.ts  # Sentiment analysis endpoint
+│
+├── public/
+│   ├── manifest.json          # PWA manifest
+│   └── sw.js                  # Service worker
 │
 └── nuxt.config.ts
 ```
@@ -97,9 +113,32 @@ npm run dev
 - `NUXT_PUBLIC_SITE_URL`: The public URL of your site
 
 ### Sentiment Analysis
-- Update interval: 10 minutes
+- Update interval: 30 seconds
 - Cache duration: 10 minutes
-- News sources: Configurable in `server/api/advanced-sentiment.ts`
+- News sources: GDELT API (danish and english news)
+
+### Performance Optimizations
+- Lazy loading of Three.js and Tone.js
+- Code splitting with manual chunks
+- Mobile-optimized particle count
+- Throttled event handlers
+- Service worker for offline functionality
+
+## 📱 Mobile Experience
+
+- Responsive design optimized for mobile devices
+- Touch-friendly controls
+- Reduced particle count on mobile for better performance
+- PWA support for app-like experience
+- Fullscreen mode support
+
+## 🚀 Performance
+
+- **Bundle Size**: Optimized with code splitting
+- **Loading**: Lazy loading of heavy libraries
+- **Caching**: Service worker for offline functionality
+- **Mobile**: Optimized for mobile devices
+- **Animations**: 60fps smooth animations
 
 ## 🤝 Contributing
 
@@ -114,4 +153,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - HuggingFace for sentiment analysis
 - Tone.js for audio synthesis
 - Three.js for visual effects
+- GDELT for news data
 - All news sources for providing content

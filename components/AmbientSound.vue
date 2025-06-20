@@ -36,7 +36,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
-import * as Tone from 'tone'
 
 const props = defineProps<{
   sentimentScore: number
@@ -47,15 +46,25 @@ const isLoading = ref(false)
 const needsInteraction = ref(true)
 const volume = ref(0.5)
 const color = ref('#4F46E5') // Indigo-600
-let synth: Tone.PolySynth | null = null
-let reverb: Tone.Reverb | null = null
-let filter: Tone.Filter | null = null
+let synth: any = null
+let reverb: any = null
+let filter: any = null
+let toneModule: any = null
+let chordInterval: any = null
 
 const getButtonTitle = computed(() => {
   if (isLoading.value) return 'Initialiserer lyd...'
   if (needsInteraction.value) return 'Klik for at aktivere lyd'
   return isPlaying.value ? 'Sluk lyd' : 'Tænd lyd'
 })
+
+// Lazy load Tone.js
+const loadToneJS = async () => {
+  if (!toneModule) {
+    toneModule = await import('tone')
+  }
+  return toneModule
+}
 
 // Definer skalaer
 const C_MINOR_SCALE = ['C3', 'D3', 'Eb3', 'F3', 'G3', 'Ab3', 'Bb3', 'C4']
@@ -64,6 +73,7 @@ const C_MAJOR_SCALE = ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4']
 // Opret synth med reverb og delay
 const initAudio = async () => {
   try {
+    const Tone = await loadToneJS()
     await Tone.start()
     
     // Opret synth med reverb
@@ -80,7 +90,7 @@ const initAudio = async () => {
     }).toDestination()
     
     // Tilføj reverb
-    const reverb = new Tone.Reverb({
+    reverb = new Tone.Reverb({
       decay: 8,
       wet: 0.8,
       preDelay: 0.2
@@ -115,9 +125,10 @@ const initAudio = async () => {
 
 // Spil akkord baseret på sentiment
 const playChord = async () => {
-  if (!synth || !isPlaying.value) return
+  if (!synth || !isPlaying.value || !toneModule) return
   
   try {
+    const Tone = await loadToneJS()
     const score = props.sentimentScore ?? 0
     
     // Vælg akkord baseret på sentiment
@@ -156,19 +167,18 @@ const playChord = async () => {
 
 // Start ambient lyd
 const playAmbientSound = async () => {
-  if (!isPlaying.value) return
+  if (!isPlaying.value || !toneModule) return
   
   try {
+    const Tone = await loadToneJS()
     await playChord()
     
     // Gentag hver 8. takt
-    Tone.Transport.scheduleRepeat(async () => {
+    chordInterval = setInterval(async () => {
       if (isPlaying.value) {
         await playChord()
       }
-    }, '8n')
-    
-    Tone.Transport.start()
+    }, 4000) // 4 sekunder mellem akkorder
     
   } catch (error) {
     console.error('Fejl ved afspilning af ambient lyd:', error)
@@ -182,12 +192,24 @@ const toggleSound = async () => {
   if (isPlaying.value) {
     console.log('Slukker lyd...')
     isPlaying.value = false
-    synth?.dispose()
-    reverb?.dispose()
-    filter?.dispose()
-    synth = null
-    reverb = null
-    filter = null
+    
+    if (chordInterval) {
+      clearInterval(chordInterval)
+      chordInterval = null
+    }
+    
+    if (synth) {
+      synth.dispose()
+      synth = null
+    }
+    if (reverb) {
+      reverb.dispose()
+      reverb = null
+    }
+    if (filter) {
+      filter.dispose()
+      filter = null
+    }
   } else {
     try {
       console.log('Starter lydinitialisering...')
@@ -195,57 +217,59 @@ const toggleSound = async () => {
       
       // Vent på brugerinteraktion før vi starter audio context
       console.log('Venter på Tone.start()...')
-      await Tone.start()
-      console.log('Tone.start() fuldført')
-      needsInteraction.value = false
-      
-      // Opret synth med reverb og delay
-      console.log('Opretter synth...')
       await initAudio()
-      
-      // Sæt master volume
-      Tone.Destination.volume.value = -10
-      
-      // Sæt isPlaying til true før vi starter lyden
+      console.log('Lydsystem initialiseret')
+      needsInteraction.value = false
       isPlaying.value = true
       
-      console.log('Lydsystem initialiseret, starter ambient lyd...')
+      // Start ambient lyd
       await playAmbientSound()
-    } catch (err) {
-      console.error('Kunne ikke starte lyd:', err)
+      
+    } catch (error) {
+      console.error('Fejl ved start af lyd:', error)
       needsInteraction.value = true
-      isPlaying.value = false
     } finally {
       isLoading.value = false
     }
   }
 }
 
-// Opdater lyd når sentiment ændrer sig
-watch(() => props.sentimentScore, (newScore) => {
-  if (isPlaying.value) {
-    playAmbientSound()
+// Opdater volumen
+const updateVolume = () => {
+  if (synth) {
+    synth.volume.value = (volume.value - 1) * 20 // Konverter 0-1 til dB
   }
-})
-
-// Opdater lydstyrke
-watch(volume, (newVolume) => {
-  if (isPlaying.value && Tone.Destination) {
-    // Konverter 0-1 til -60-0 dB
-    const db = newVolume * 60 - 60
-    Tone.Destination.volume.value = db
-  }
-})
-
-function updateVolume(event: Event) {
-  const target = event.target as HTMLInputElement
-  volume.value = parseFloat(target.value)
 }
 
+// Opdater farve baseret på sentiment
+watch(() => props.sentimentScore, () => {
+  const score = props.sentimentScore ?? 0
+  
+  if (score <= -0.5) {
+    color.value = '#6B7280' // grå
+  } else if (score <= 0) {
+    color.value = '#3B82F6' // blå
+  } else if (score <= 0.5) {
+    color.value = '#60A5FA' // lys blå
+  } else {
+    color.value = '#FBBF24' // gul
+  }
+})
+
 onUnmounted(() => {
-  synth?.dispose()
-  reverb?.dispose()
-  filter?.dispose()
+  if (chordInterval) {
+    clearInterval(chordInterval)
+  }
+  
+  if (synth) {
+    synth.dispose()
+  }
+  if (reverb) {
+    reverb.dispose()
+  }
+  if (filter) {
+    filter.dispose()
+  }
 })
 </script>
 
@@ -253,123 +277,126 @@ onUnmounted(() => {
 .sound-controls {
   position: fixed;
   bottom: 2rem;
-  right: 2rem;
+  left: 2rem;
+  z-index: 50;
   display: flex;
   flex-direction: column;
+  gap: 1rem;
   align-items: center;
-  gap: 0.5rem;
-  background-color: rgba(0, 0, 0, 0.8);
-  padding: 1rem;
-  border-radius: 1rem;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
 }
 
 .sound-button {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0.5rem;
+  width: 3rem;
+  height: 3rem;
   border-radius: 50%;
-  transition: all 0.2s ease;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  position: relative;
+  font-size: 1.2rem;
 }
 
 .sound-button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
 }
 
 .sound-button.is-playing {
-  background-color: rgba(255, 255, 255, 0.1);
+  background: rgba(79, 70, 229, 0.3);
+  border-color: rgba(79, 70, 229, 0.6);
 }
 
 .sound-button.is-loading {
-  cursor: wait;
+  background: rgba(59, 130, 246, 0.3);
+  border-color: rgba(59, 130, 246, 0.6);
 }
 
 .sound-button.needs-interaction {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.6);
   animation: pulse 2s infinite;
 }
 
+.sound-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .loading-spinner {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1rem;
+  height: 1rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
   border-radius: 50%;
-  border-top-color: white;
   animation: spin 1s linear infinite;
 }
 
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-  }
+.volume-control {
+  width: 8rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.volume-control input[type="range"] {
+  width: 100%;
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.volume-control input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+}
+
+.volume-control input[type="range"]::-moz-range-thumb {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  border: none;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@media (max-width: 768px) {
+  .sound-controls {
+    bottom: 1rem;
+    left: 1rem;
   }
-}
-
-.volume-control {
-  width: 100%;
-  padding: 0 0.5rem;
-}
-
-.volume-slider {
-  width: 100%;
-  height: 4px;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-  outline: none;
-}
-
-.volume-slider::-webkit-slider-thumb {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  background: white;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.volume-slider::-moz-range-thumb {
-  appearance: none;
-  -moz-appearance: none;
-  width: 16px;
-  height: 16px;
-  background: white;
-  border-radius: 50%;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.volume-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-}
-
-.volume-slider::-moz-range-thumb:hover {
-  transform: scale(1.2);
+  
+  .sound-button {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1rem;
+  }
+  
+  .volume-control {
+    width: 6rem;
+  }
 }
 </style> 
