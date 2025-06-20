@@ -15,7 +15,15 @@ export default defineNuxtConfig({
     }
   },
   nitro: {
-    compatibilityDate: '2025-06-04'
+    compatibilityDate: '2025-06-04',
+    prerender: {
+      crawlLinks: false,
+      routes: [
+        '/',
+        '/200.html',
+        '/404.html'
+      ]
+    }
   },
   // Build optimeringer
   build: {
