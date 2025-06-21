@@ -56,7 +56,12 @@ const STATIC_DATA: SentimentData = {
 async function fetchAndAnalyzeNews(): Promise<SentimentData> {
   try {
     console.log('Fetching news from GDELT...')
-    // Hent nyheder fra GDELT
+    
+    // Opret en AbortController for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 sekunder timeout
+    
+    // Hent nyheder fra GDELT med timeout
     const response = await fetch(
       'https://api.gdeltproject.org/api/v2/doc/doc?' +
       'query=language:dan OR language:eng' + // Dansk og engelsk nyheder
@@ -64,8 +69,16 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
       '&format=json' +
       '&maxrecords=50' + // Begræns til 50 artikler
       '&sort=hybridrel' + // Sorter efter relevans
-      '&startdatetime=20240601000000' // Start fra 1. juni 2024
+      '&startdatetime=20240601000000', // Start fra 1. juni 2024
+      {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'EmotionWave/1.0'
+        }
+      }
     )
+
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       console.error('GDELT API error:', response.status, response.statusText)
@@ -110,6 +123,9 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
     }
   } catch (error) {
     console.error('Error fetching sentiment data:', error)
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.log('Request timed out, using static data')
+    }
     return STATIC_DATA
   }
 }
