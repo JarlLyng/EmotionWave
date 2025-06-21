@@ -23,6 +23,9 @@ export default defineNuxtConfig({
         '/200.html',
         '/404.html'
       ]
+    },
+    routeRules: {
+      '/**': { prerender: false }
     }
   },
   // Build optimeringer
@@ -47,9 +50,13 @@ export default defineNuxtConfig({
       include: ['three', 'tone']
     }
   },
+  // Performance optimeringer
+  experimental: {
+    payloadExtraction: false
+  },
   app: {
     baseURL: process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/',
-    buildAssetsDir: '/_nuxt/',
+    buildAssetsDir: process.env.NODE_ENV === 'production' ? '/EmotionWave/_nuxt/' : '/_nuxt/',
     head: {
       title: 'EmotionWave',
       meta: [
