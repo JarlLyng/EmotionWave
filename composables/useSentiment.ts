@@ -55,37 +55,23 @@ export function useSentiment() {
     error.value = null
 
     try {
-      // Brug statisk data i produktion
-      if (process.env.NODE_ENV === 'production') {
-        const staticData = {
-          score: 0.86,
-          timestamp: Date.now(),
-          sources: [
-            {
-              name: 'Reuters',
-              score: 0.97,
-              articles: 5
-            },
-            {
-              name: 'Al Jazeera',
-              score: 0.76,
-              articles: 5
-            }
-          ]
-        }
-        targetScore.value = staticData.score
-        if (!animationFrameId) {
-          animateTransition()
-        }
-        return
-      }
-
       const response = await fetch('/api/advanced-sentiment')
       if (!response.ok) {
         throw new Error('Failed to fetch sentiment data')
       }
       const data = await response.json()
+      
+      console.log('Fetched sentiment data:', data)
+      
       targetScore.value = data.score
+      
+      // Opdater sources hvis de findes
+      if (data.sources) {
+        sources.value = data.sources.reduce((acc: Record<string, number>, source: any) => {
+          acc[source.name] = source.score
+          return acc
+        }, {})
+      }
       
       if (!animationFrameId) {
         animateTransition()
@@ -120,6 +106,7 @@ export function useSentiment() {
     sentimentDetails,
     isLoading,
     error,
+    sources,
     fetchSentiment
   }
 } 
