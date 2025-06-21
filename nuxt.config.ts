@@ -15,44 +15,10 @@ export default defineNuxtConfig({
     }
   },
   nitro: {
-    compatibilityDate: '2025-06-04',
     prerender: {
       crawlLinks: false,
-      routes: [
-        '/',
-        '/200.html',
-        '/404.html'
-      ]
-    },
-    routeRules: {
-      '/**': { prerender: false }
+      routes: ['/']
     }
-  },
-  // Build optimeringer
-  build: {
-    transpile: ['three', 'tone']
-  },
-  // Vite optimeringer
-  vite: {
-    build: {
-      chunkSizeWarningLimit: 1000,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            'three': ['three'],
-            'tone': ['tone'],
-            'vendor': ['vue', 'vue-router']
-          }
-        }
-      }
-    },
-    optimizeDeps: {
-      include: ['three', 'tone']
-    }
-  },
-  // Performance optimeringer
-  experimental: {
-    payloadExtraction: false
   },
   app: {
     baseURL: process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/',
