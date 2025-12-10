@@ -1,0 +1,47 @@
+import { defineEventHandler } from 'h3'
+
+/**
+ * Dynamic manifest.json route
+ * Generates PWA manifest with correct baseURL
+ */
+export default defineEventHandler((event) => {
+  const config = useRuntimeConfig()
+  const baseURL = config.app?.baseURL || process.env.NUXT_PUBLIC_BASE_URL || 
+                  (process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/')
+  
+  const joinURL = (path: string) => {
+    const base = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL
+    const p = path.startsWith('/') ? path : `/${path}`
+    return `${base}${p}`
+  }
+  
+  const manifest = {
+    name: 'EmotionWave',
+    short_name: 'EmotionWave',
+    description: 'A living website that reacts to the world\'s mood',
+    start_url: baseURL,
+    display: 'fullscreen',
+    background_color: '#000000',
+    theme_color: '#000000',
+    orientation: 'portrait-primary',
+    icons: [
+      {
+        src: joinURL('favicon.ico'),
+        sizes: '16x16 32x32',
+        type: 'image/x-icon'
+      },
+      {
+        src: joinURL('apple-touch-icon.png'),
+        sizes: '180x180',
+        type: 'image/png'
+      }
+    ],
+    categories: ['entertainment', 'art', 'music'],
+    lang: 'en',
+    dir: 'ltr'
+  }
+  
+  event.node.res.setHeader('Content-Type', 'application/manifest+json')
+  return manifest
+})
+
