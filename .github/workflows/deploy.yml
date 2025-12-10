@@ -32,7 +32,7 @@ jobs:
         env:
           HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
           NODE_ENV: production
-          NUXT_PUBLIC_SITE_URL: ${{ secrets.NUXT_PUBLIC_SITE_URL }}
+          NUXT_PUBLIC_SITE_URL: ${{ secrets.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/' }}
         run: npm run generate
 
       - name: Setup Pages
