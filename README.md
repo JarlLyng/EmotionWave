@@ -2,6 +2,8 @@
 
 A living Nuxt-based website that reacts to the world's mood. Through real-time sentiment analysis of news and social media, the site's visual expression — colors, animations, and atmosphere — changes automatically.
 
+🌐 **Live Site**: [https://jarllyng.github.io/EmotionWave/](https://jarllyng.github.io/EmotionWave/)
+
 ## 🎯 Project Purpose
 
 Create a data-driven artwork where the website changes in real-time based on global sentiment. Users get a visual sense of "how the world feels" through an immersive experience combining visual and audio elements.
@@ -36,9 +38,10 @@ Create a data-driven artwork where the website changes in real-time based on glo
 ### Sentiment Analysis
 - Real-time analysis of news articles via GDELT API
 - Multiple news sources for balanced sentiment
-- 10-minute cache to limit API calls
+- 30-second cache to limit API calls
 - Sentiment score range: -1 (negative) to +1 (positive)
-- Fallback to static data in production
+- Smooth animated transitions between sentiment scores
+- Fallback to dynamic time-based data if API fails
 
 ### Progressive Web App (PWA)
 - Offline functionality with service worker
@@ -84,9 +87,11 @@ emotionwave/
 
 ## 🚀 Getting Started
 
+### Local Development
+
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/EmotionWave.git
+git clone https://github.com/jarllyng/EmotionWave.git
 cd EmotionWave
 ```
 
@@ -106,6 +111,25 @@ NUXT_PUBLIC_SITE_URL=http://localhost:3000
 npm run dev
 ```
 
+### GitHub Pages Deployment
+
+This project is deployed on GitHub Pages and available at [https://jarllyng.github.io/EmotionWave/](https://jarllyng.github.io/EmotionWave/)
+
+1. **GitHub Actions** (automatic):
+   - The included GitHub Actions workflow automatically builds and deploys to GitHub Pages on every push to `main` or `master`
+   - GitHub Pages is configured to use GitHub Actions as the source
+
+2. **Environment Variables**:
+   - `HUGGINGFACE_API_KEY` is configured as a repository secret
+   - `NUXT_PUBLIC_SITE_URL` is set to `https://jarllyng.github.io/EmotionWave/`
+   - The workflow uses these secrets during build
+
+3. **Manual Build** (if needed):
+```bash
+npm run generate
+```
+Then push the `dist` folder to the `gh-pages` branch or use GitHub Actions (recommended).
+
 ## 🔧 Configuration
 
 ### Environment Variables
@@ -114,8 +138,9 @@ npm run dev
 
 ### Sentiment Analysis
 - Update interval: 30 seconds
-- Cache duration: 10 minutes
+- Cache duration: 30 seconds
 - News sources: GDELT API (danish and english news)
+- Automatic fallback to dynamic data if API fails
 
 ### Performance Optimizations
 - Lazy loading of Three.js and Tone.js
@@ -139,6 +164,14 @@ npm run dev
 - **Caching**: Service worker for offline functionality
 - **Mobile**: Optimized for mobile devices
 - **Animations**: 60fps smooth animations
+
+## 🐛 Recent Fixes
+
+- Fixed component duplication between `app.vue` and `pages/index.vue`
+- Improved `useSentiment` composable lifecycle management
+- Fixed VisualLayer animation loop scope issues
+- Enhanced SentimentMeter with proper loading and error states
+- Improved API endpoint error handling and response format handling
 
 ## 🤝 Contributing
 

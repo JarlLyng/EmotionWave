@@ -31,11 +31,13 @@ let particles: any
 let mousePosition = { x: 0, y: 0 }
 let animationId: number | null = null
 let threeModule: any = null
+let THREE: any = null
 
 // Lazy load Three.js
 const loadThreeJS = async () => {
   if (!threeModule) {
     threeModule = await import('three')
+    THREE = threeModule
   }
   return threeModule
 }
@@ -74,7 +76,7 @@ const initScene = async () => {
   isLoaded.value = true
   
   // Start animation
-  animate(THREE)
+  animate()
 }
 
 // Opret partikler med optimeret antal
@@ -125,8 +127,11 @@ const createParticles = (THREE: any) => {
 }
 
 // Optimiseret animation loop
-const animate = (THREE: any) => {
-  if (!particles) return
+const animate = () => {
+  if (!particles || !renderer || !scene || !camera) {
+    animationId = null
+    return
+  }
   
   // Roter partikler
   particles.rotation.x += 0.0005
@@ -155,7 +160,7 @@ const animate = (THREE: any) => {
   particles.geometry.attributes.position.needsUpdate = true
   renderer.render(scene, camera)
   
-  animationId = requestAnimationFrame(() => animate(THREE))
+  animationId = requestAnimationFrame(animate)
 }
 
 // Throttled mouse position update
@@ -203,7 +208,12 @@ const updateMousePosition = (event: MouseEvent) => {
 watch(() => props.sentimentScore, async () => {
   if (!particles || !threeModule) return
   
-  const THREE = await loadThreeJS()
+  if (!THREE) {
+    await loadThreeJS()
+  }
+  
+  if (!THREE || !particles) return
+  
   const colors = particles.geometry.attributes.color.array as Float32Array
   const score = props.sentimentScore ?? 0
   

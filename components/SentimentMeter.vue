@@ -17,8 +17,17 @@
       </div>
     </div>
     <div class="score-display" :style="{ color: getMeterColor }">
-      {{ formatScore }}
+      <span v-if="isLoading" class="loading-indicator">Loading...</span>
+      <span v-else-if="error" class="error-indicator">{{ error }}</span>
+      <span v-else>{{ formatScore }}</span>
     </div>
+    <button 
+      v-if="error" 
+      @click="$emit('retry')"
+      class="retry-button"
+    >
+      Prøv igen
+    </button>
   </div>
 </template>
 
@@ -31,7 +40,7 @@ const props = defineProps<{
   error?: string | null
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'retry'): void
 }>()
 
@@ -105,6 +114,39 @@ const formatScore = computed(() => {
   font-weight: bold;
   margin-top: 1rem;
   transition: color 0.5s ease-out;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-indicator {
+  font-size: 1rem;
+  opacity: 0.7;
+  animation: pulse 2s infinite;
+}
+
+.error-indicator {
+  font-size: 0.875rem;
+  color: #ff4444;
+  opacity: 0.9;
+}
+
+.retry-button {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.875rem;
+}
+
+.retry-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .label {
@@ -114,6 +156,11 @@ const formatScore = computed(() => {
 
 .label:hover {
   opacity: 1;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
 }
 
 /* Mobile responsiveness */

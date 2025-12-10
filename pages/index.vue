@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-black text-white p-6">
+  <div class="min-h-screen bg-black text-white">
     <VisualLayer :sentiment-score="sentimentScore" />
     <AmbientSound :sentiment-score="sentimentScore" />
     <SentimentMeter 
@@ -13,16 +13,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import VisualLayer from '~/components/VisualLayer.vue'
 import AmbientSound from '~/components/AmbientSound.vue'
 import SentimentMeter from '~/components/SentimentMeter.vue'
 import InfoDialog from '~/components/InfoDialog.vue'
 import { useSentiment } from '~/composables/useSentiment'
 
-const { sentimentScore, isLoading, error, fetchSentiment } = useSentiment()
+const { sentimentScore, isLoading, error, fetchSentiment, startPolling, stopPolling } = useSentiment()
 
 onMounted(() => {
   fetchSentiment()
+  startPolling()
+})
+
+onUnmounted(() => {
+  stopPolling()
 })
 </script> 

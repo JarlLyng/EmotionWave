@@ -22,7 +22,7 @@ export default defineNuxtConfig({
   },
   app: {
     baseURL: process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/',
-    buildAssetsDir: process.env.NODE_ENV === 'production' ? '/EmotionWave/_nuxt/' : '/_nuxt/',
+    buildAssetsDir: '_nuxt/',
     head: {
       title: 'EmotionWave',
       meta: [

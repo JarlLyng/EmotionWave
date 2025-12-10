@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 
 interface SentimentData {
   score: number
@@ -37,6 +37,7 @@ export function useSentiment() {
     // Hvis forskellen er meget lille, spring direkte til målværdien
     if (Math.abs(diff) < 0.001) {
       sentimentScore.value = target
+      animationFrameId = null
       return
     }
     
@@ -84,22 +85,30 @@ export function useSentiment() {
     }
   }
   
-  onMounted(() => {
-    // Hent første gang
-    fetchSentiment()
-    
-    // Hent sentiment hver 30. sekund
-    intervalId = setInterval(fetchSentiment, 30000)
-  })
-  
-  onUnmounted(() => {
+  /**
+   * Start polling for sentiment updates
+   */
+  function startPolling() {
     if (intervalId) {
       clearInterval(intervalId)
     }
+    // Hent sentiment hver 30. sekund
+    intervalId = setInterval(fetchSentiment, 30000)
+  }
+  
+  /**
+   * Stop polling for sentiment updates
+   */
+  function stopPolling() {
+    if (intervalId) {
+      clearInterval(intervalId)
+      intervalId = null
+    }
     if (animationFrameId) {
       cancelAnimationFrame(animationFrameId)
+      animationFrameId = null
     }
-  })
+  }
   
   return {
     sentimentScore,
@@ -107,6 +116,8 @@ export function useSentiment() {
     isLoading,
     error,
     sources,
-    fetchSentiment
+    fetchSentiment,
+    startPolling,
+    stopPolling
   }
 } 

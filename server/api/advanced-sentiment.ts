@@ -106,26 +106,49 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
       throw new Error('GDELT API fejl')
     }
 
-    const data: GDELTResponse = await response.json()
+    const data: any = await response.json()
+    
+    // Håndter forskellige response formater fra GDELT
+    let articles: GDELTResponse['articles'] = []
+    
+    if (Array.isArray(data)) {
+      articles = data
+    } else if (data.articles && Array.isArray(data.articles)) {
+      articles = data.articles
+    } else if (data.results && Array.isArray(data.results)) {
+      articles = data.results
+    } else {
+      console.log('Unexpected GDELT response format:', typeof data)
+      return getDynamicFallbackData()
+    }
+    
     console.log('GDELT response:', {
-      totalArticles: data.articles.length,
-      sources: [...new Set(data.articles.map(a => a.source))]
+      totalArticles: articles.length,
+      sources: [...new Set(articles.map((a: any) => a.source || a.domain || 'Unknown'))]
     })
     
-    if (!data.articles || data.articles.length === 0) {
+    if (!articles || articles.length === 0) {
       console.log('No articles found, using dynamic fallback')
       return getDynamicFallbackData()
     }
     
+    // Normaliser artikler til forventet format
+    const normalizedArticles = articles.map((article: any) => ({
+      sentiment: article.sentiment || article.tone || 0,
+      url: article.url || article.shareurl || '',
+      title: article.title || article.seo || '',
+      source: article.source || article.domain || 'Unknown'
+    }))
+    
     // Gruppér artikler efter kilde
-    const sourceGroups = data.articles.reduce((acc, article) => {
+    const sourceGroups = normalizedArticles.reduce((acc, article) => {
       const source = article.source
       if (!acc[source]) {
         acc[source] = []
       }
       acc[source].push(article)
       return acc
-    }, {} as Record<string, GDELTResponse['articles']>)
+    }, {} as Record<string, typeof normalizedArticles>)
 
     // Beregn sentiment for hver kilde
     const sources = Object.entries(sourceGroups).map(([name, articles]) => {
