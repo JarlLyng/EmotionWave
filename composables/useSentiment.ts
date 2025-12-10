@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { fetchGDELTSentiment } from './useGDELT'
 
 interface SentimentData {
   score: number
@@ -90,26 +91,52 @@ export function useSentiment() {
         animateTransition()
       }
     } catch (e) {
-      // Fallback to dynamic time-based data if API is not available
+      // If server API is not available (e.g., on static hosting), try client-side GDELT API
       const errorMessage = e instanceof Error ? e.message : 'Unknown error'
-      console.warn('API not available, using fallback data:', errorMessage)
+      console.warn('Server API not available, trying client-side GDELT API:', errorMessage)
       
-      isUsingFallback.value = true
-      error.value = 'Using demo data (API unavailable)' // Show user that fallback is active
-      
-      const now = Date.now()
-      const hour = new Date(now).getHours()
-      const minute = new Date(now).getMinutes()
-      const timeBasedSeed = (hour * 60 + minute) % 1440
-      const baseScore = 0.3 + (Math.sin(timeBasedSeed * 0.1) * 0.4)
-      const seconds = new Date(now).getSeconds()
-      const variation = (seconds % 30) / 100
-      const fallbackScore = Math.max(-1, Math.min(1, baseScore + variation))
-      
-      targetScore.value = fallbackScore
-      
-      if (!animationFrameId) {
-        animateTransition()
+      try {
+        // Try fetching directly from GDELT API (client-side)
+        const data = await fetchGDELTSentiment()
+        
+        console.log('Fetched sentiment data from GDELT (client-side):', data)
+        
+        isUsingFallback.value = false
+        error.value = null
+        targetScore.value = data.score
+        
+        // Update sources if they exist
+        if (data.sources) {
+          sources.value = data.sources.reduce((acc: Record<string, number>, source: any) => {
+            acc[source.name] = source.score
+            return acc
+          }, {})
+        }
+        
+        if (!animationFrameId) {
+          animateTransition()
+        }
+      } catch (gdeltError) {
+        // Final fallback to dynamic time-based data if both APIs fail
+        console.warn('GDELT API also unavailable, using fallback data:', gdeltError)
+        
+        isUsingFallback.value = true
+        error.value = 'Using demo data (API unavailable)' // Show user that fallback is active
+        
+        const now = Date.now()
+        const hour = new Date(now).getHours()
+        const minute = new Date(now).getMinutes()
+        const timeBasedSeed = (hour * 60 + minute) % 1440
+        const baseScore = 0.3 + (Math.sin(timeBasedSeed * 0.1) * 0.4)
+        const seconds = new Date(now).getSeconds()
+        const variation = (seconds % 30) / 100
+        const fallbackScore = Math.max(-1, Math.min(1, baseScore + variation))
+        
+        targetScore.value = fallbackScore
+        
+        if (!animationFrameId) {
+          animateTransition()
+        }
       }
     } finally {
       isLoading.value = false

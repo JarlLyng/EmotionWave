@@ -45,7 +45,7 @@ export default defineEventHandler((event) => {
       },
       {
         src: buildAbsoluteURL('apple-touch-icon.png'),
-        sizes: '180x180',
+        sizes: '32x32',
         type: 'image/png'
       }
     ],
