@@ -17,18 +17,48 @@ const staticUrlsToCache = [
   `${basePath}/apple-touch-icon.png`
 ]
 
-// Install event - cache static assets
+// Install event - cache static assets and precache _nuxt assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE_NAME)
-      .then((cache) => {
-        console.log('Caching static assets:', staticUrlsToCache)
-        return cache.addAll(staticUrlsToCache)
-      })
-      .catch((error) => {
-        console.warn('Cache addAll failed:', error)
-        // Continue even if caching fails
-      })
+    Promise.all([
+      // Cache static assets
+      caches.open(STATIC_CACHE_NAME)
+        .then((cache) => {
+          console.log('Caching static assets:', staticUrlsToCache)
+          return cache.addAll(staticUrlsToCache).catch((error) => {
+            console.warn('Static cache addAll failed:', error)
+          })
+        }),
+      // Precache _nuxt assets by fetching them
+      caches.open(CACHE_NAME)
+        .then(async (cache) => {
+          try {
+            // Fetch the main HTML to discover _nuxt assets
+            const response = await fetch(`${basePath}/`)
+            if (response.ok) {
+              const html = await response.text()
+              // Extract _nuxt asset URLs from HTML (simplified approach)
+              const nuxtAssetRegex = /(_nuxt\/[^"'\s]+\.(js|css))/g
+              const matches = [...new Set(html.match(nuxtAssetRegex) || [])]
+              
+              // Cache discovered _nuxt assets
+              const nuxtUrls = matches.map(path => `${basePath}/${path}`)
+              if (nuxtUrls.length > 0) {
+                console.log('Precaching _nuxt assets:', nuxtUrls.length)
+                await Promise.all(
+                  nuxtUrls.map(url => 
+                    fetch(url)
+                      .then(res => res.ok ? cache.put(url, res.clone()) : null)
+                      .catch(() => null)
+                  )
+                )
+              }
+            }
+          } catch (error) {
+            console.warn('Precache _nuxt assets failed:', error)
+          }
+        })
+    ])
   )
   // Skip waiting to activate immediately
   self.skipWaiting()
@@ -43,50 +73,79 @@ self.addEventListener('fetch', (event) => {
     return
   }
   
-  // Cache strategy for different asset types
+  // Cache strategy: stale-while-revalidate for static assets, network-first for API
   event.respondWith(
-    caches.match(event.request)
-      .then((cachedResponse) => {
-        // For _nuxt assets (JS/CSS), prefer cache for offline support
-        if (url.pathname.includes('/_nuxt/')) {
-          return cachedResponse || fetch(event.request).then((response) => {
-            // Cache successful responses
-            if (response.ok) {
-              const responseClone = response.clone()
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, responseClone)
-              })
-            }
-            return response
-          })
+    (async () => {
+      const cachedResponse = await caches.match(event.request)
+      
+      // For _nuxt assets and static files: stale-while-revalidate
+      if (url.pathname.includes('/_nuxt/') || 
+          event.request.destination === 'script' ||
+          event.request.destination === 'style' ||
+          event.request.destination === 'image') {
+        // Return cached version immediately if available
+        if (cachedResponse) {
+          // Update cache in background
+          fetch(event.request)
+            .then((response) => {
+              if (response.ok) {
+                caches.open(CACHE_NAME).then((cache) => {
+                  cache.put(event.request, response.clone())
+                })
+              }
+            })
+            .catch(() => {}) // Ignore fetch errors in background update
+          return cachedResponse
         }
         
-        // For other requests, network first
-        return fetch(event.request)
-          .then((response) => {
-            // Cache successful responses
-            if (response.ok && (event.request.destination === 'script' || 
-                               event.request.destination === 'style' ||
-                               event.request.destination === 'image')) {
-              const responseClone = response.clone()
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, responseClone)
-              })
-            }
-            return response
-          })
-          .catch(() => {
-            // Fallback to cache if network fails
-            if (cachedResponse) {
-              return cachedResponse
-            }
-            // Fallback to index for navigation requests
-            if (event.request.destination === 'document') {
-              return caches.match(`${basePath}/`)
-            }
-            return new Response('', { status: 404 })
-          })
-      })
+        // If not cached, fetch and cache
+        try {
+          const response = await fetch(event.request)
+          if (response.ok) {
+            const responseClone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone)
+            })
+          }
+          return response
+        } catch (error) {
+          // Return 404 if fetch fails and no cache
+          return new Response('', { status: 404 })
+        }
+      }
+      
+      // For API requests: network-first
+      if (url.pathname.includes('/api/')) {
+        try {
+          const response = await fetch(event.request)
+          return response
+        } catch (error) {
+          // Fallback to cache if network fails
+          if (cachedResponse) {
+            return cachedResponse
+          }
+          return new Response('', { status: 503 })
+        }
+      }
+      
+      // For navigation requests: network-first with offline fallback
+      if (event.request.destination === 'document') {
+        try {
+          const response = await fetch(event.request)
+          return response
+        } catch (error) {
+          // Fallback to cached index
+          return cachedResponse || caches.match(`${basePath}/`) || new Response('', { status: 503 })
+        }
+      }
+      
+      // Default: network-first
+      try {
+        return await fetch(event.request)
+      } catch (error) {
+        return cachedResponse || new Response('', { status: 404 })
+      }
+    })()
   )
 })
 

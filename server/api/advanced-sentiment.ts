@@ -38,8 +38,9 @@ let cachedData: SentimentData | null = null
 
 /**
  * Get dynamic date range for GDELT query (last 24 hours)
+ * Returns both start and end datetime
  */
-function getDateRange(): string {
+function getDateRange(): { start: string; end: string } {
   const now = new Date()
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
   
@@ -54,7 +55,10 @@ function getDateRange(): string {
     return `${year}${month}${day}${hours}${minutes}${seconds}`
   }
   
-  return formatDate(yesterday)
+  return {
+    start: formatDate(yesterday),
+    end: formatDate(now)
+  }
 }
 
 /**
@@ -115,17 +119,22 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
     const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 sekunder timeout
     
     // Get dynamic date range (last 24 hours)
-    const startDateTime = getDateRange()
+    const dateRange = getDateRange()
+    
+    // Focused query: news about current events, politics, technology, society
+    // Exclude sports and entertainment to reduce noise
+    const focusedQuery = '(language:dan OR language:eng) AND (politics OR technology OR society OR economy OR climate OR health) NOT (sport OR entertainment OR celebrity)'
     
     // Hent nyheder fra GDELT med timeout
     const response = await fetch(
       'https://api.gdeltproject.org/api/v2/doc/doc?' +
-      'query=language:dan OR language:eng' + // Dansk og engelsk nyheder
+      `query=${encodeURIComponent(focusedQuery)}` +
       '&mode=artlist' +
       '&format=json' +
       '&maxrecords=30' + // Begræns til 30 artikler
       '&sort=hybridrel' + // Sorter efter relevans
-      `&startdatetime=${startDateTime}`, // Dynamisk: seneste 24 timer
+      `&startdatetime=${dateRange.start}` + // Dynamisk: seneste 24 timer start
+      `&enddatetime=${dateRange.end}`, // Dynamisk: nu (end datetime)
       {
         signal: controller.signal,
         headers: {
@@ -167,11 +176,13 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
       return getDynamicFallbackData()
     }
     
-    // Normaliser artikler til forventet format og normaliser sentiment værdier
+    // Normaliser artikler til forventet format - clamp sentiment på artikelniveau
     const normalizedArticles = articles.map((article: any) => {
       const rawSentiment = article.sentiment || article.tone || 0
+      // Clamp på artikelniveau, men ikke normaliser endnu
+      const clampedSentiment = Math.max(-10, Math.min(10, rawSentiment))
       return {
-        sentiment: normalizeSentiment(rawSentiment), // Normaliser til [-1, 1]
+        sentiment: clampedSentiment, // Clamped men ikke normaliseret endnu
         url: article.url || article.shareurl || '',
         title: article.title || article.seo || '',
         source: article.source || article.domain || 'Unknown'
@@ -188,30 +199,32 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
       return acc
     }, {} as Record<string, typeof normalizedArticles>)
 
-    // Beregn vægtet sentiment for hver kilde (vægt efter artikelantal)
+    // Beregn rå gennemsnit for hver kilde (før normalisering)
     const sources = Object.entries(sourceGroups).map(([name, articles]) => {
-      const avgSentiment = articles.reduce((sum, article) => sum + article.sentiment, 0) / articles.length
+      const rawAvgSentiment = articles.reduce((sum, article) => sum + article.sentiment, 0) / articles.length
       const articleCount = articles.length
-      console.log(`${name} sentiment score: ${avgSentiment.toFixed(2)} (${articleCount} articles)`)
+      console.log(`${name} raw sentiment: ${rawAvgSentiment.toFixed(2)} (${articleCount} articles)`)
       return {
         name,
-        score: normalizeSentiment(avgSentiment), // Ensure normalized
+        rawScore: rawAvgSentiment, // Rå score før normalisering
+        score: normalizeSentiment(rawAvgSentiment), // Normaliseret score til [-1, 1]
         articles: articleCount,
         weight: articleCount // Weight for weighted average
       }
     })
 
-    // Beregn vægtet gennemsnitlig sentiment (vægt efter artikelantal)
+    // Beregn vægtet gennemsnitlig sentiment på rå scores (før normalisering)
     const totalWeight = sources.reduce((sum, source) => sum + source.weight, 0)
-    const weightedAverage = totalWeight > 0
-      ? sources.reduce((sum, source) => sum + (source.score * source.weight), 0) / totalWeight
+    const rawWeightedAverage = totalWeight > 0
+      ? sources.reduce((sum, source) => sum + (source.rawScore * source.weight), 0) / totalWeight
       : 0
     
-    const averageSentiment = normalizeSentiment(weightedAverage)
+    // Normaliser kun én gang på totalscore
+    const averageSentiment = normalizeSentiment(rawWeightedAverage)
     console.log(`Overall weighted sentiment score: ${averageSentiment.toFixed(2)} (from ${sources.length} sources, ${normalizedArticles.length} total articles)`)
     
-    // Return sources without weight field
-    const sourcesForResponse = sources.map(({ weight, ...rest }) => rest)
+    // Return sources without weight and rawScore fields (only normalized score)
+    const sourcesForResponse = sources.map(({ weight, rawScore, ...rest }) => rest)
     
     return {
       score: averageSentiment,

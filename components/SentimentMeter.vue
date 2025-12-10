@@ -18,11 +18,12 @@
     </div>
     <div class="score-display" :style="{ color: getMeterColor }">
       <span v-if="isLoading" class="loading-indicator">Loading...</span>
-      <span v-else-if="error" class="error-indicator">{{ error }}</span>
+      <span v-else-if="error && !isUsingFallback" class="error-indicator">{{ error }}</span>
       <span v-else>{{ formatScore }}</span>
     </div>
-    <div v-if="isUsingFallback" class="fallback-indicator">
-      <span class="fallback-text">📡 Demo data (API unavailable)</span>
+    <div v-if="isUsingFallback" class="fallback-badge">
+      <span class="fallback-icon">📡</span>
+      <span class="fallback-text">Demo data</span>
     </div>
     <button 
       v-if="error && !isUsingFallback" 
@@ -153,15 +154,26 @@ const formatScore = computed(() => {
   border-color: rgba(255, 255, 255, 0.4);
 }
 
-.fallback-indicator {
-  margin-top: 0.5rem;
-  text-align: center;
+.fallback-badge {
+  margin-top: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  backdrop-filter: blur(10px);
+}
+
+.fallback-icon {
+  font-size: 0.875rem;
 }
 
 .fallback-text {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
-  font-style: italic;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
 }
 
 .label {

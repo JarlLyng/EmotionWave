@@ -13,9 +13,12 @@ onMounted(() => {
     const config = useRuntimeConfig()
     const baseURL = config.app.baseURL || '/'
     
-    // Build service worker path dynamically
-    const swPath = `${baseURL}sw.js`.replace(/\/+/g, '/')
-    const scope = baseURL
+    // Build service worker path using URL constructor to handle absolute URLs correctly
+    const baseUrlObj = baseURL.startsWith('http') 
+      ? new URL(baseURL)
+      : new URL(baseURL, window.location.origin)
+    const swPath = new URL('sw.js', baseUrlObj).toString()
+    const scope = baseUrlObj.toString()
     
     navigator.serviceWorker.register(swPath, { scope })
       .then((registration) => {

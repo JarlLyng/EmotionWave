@@ -111,24 +111,21 @@ Sitemap: ${domain}/sitemap.xml`
         { name: 'twitter:title', content: 'EmotionWave' },
         { name: 'twitter:description', content: 'A living website that reacts to the world\'s mood' }
       ],
-      link: []
-    }
-  },
-  hooks: {
-    'app:created'(app) {
-      // Dynamically set head links based on baseURL
-      const baseURL = app.config.app.baseURL
-      const joinURL = (path: string) => {
-        const base = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL
-        const p = path.startsWith('/') ? path : `/${path}`
-        return `${base}${p}`
-      }
-      
-      app.head.link = [
-        { rel: 'icon', type: 'image/x-icon', href: joinURL('favicon.ico') },
-        { rel: 'apple-touch-icon', href: joinURL('apple-touch-icon.png') },
-        { rel: 'manifest', href: joinURL('manifest.json') }
-      ]
+      link: (() => {
+        // Generate links directly in config for SSR output
+        const baseURL = process.env.NUXT_PUBLIC_BASE_URL || (process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/')
+        const joinURL = (path: string) => {
+          const base = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL
+          const p = path.startsWith('/') ? path : `/${path}`
+          return `${base}${p}`
+        }
+        
+        return [
+          { rel: 'icon', type: 'image/x-icon', href: joinURL('favicon.ico') },
+          { rel: 'apple-touch-icon', href: joinURL('apple-touch-icon.png') },
+          { rel: 'manifest', href: joinURL('manifest.json') }
+        ]
+      })()
     }
   }
 })
