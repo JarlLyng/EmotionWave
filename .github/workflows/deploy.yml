@@ -11,9 +11,12 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pages: write
       id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
       - name: Checkout
@@ -33,7 +36,11 @@ jobs:
           HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
           NODE_ENV: production
           NUXT_PUBLIC_SITE_URL: ${{ secrets.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/' }}
-        run: npm run generate
+        run: |
+          echo "Building Nuxt application..."
+          npm run generate
+          echo "Build completed. Checking output..."
+          ls -la .output/public/ | head -20
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
