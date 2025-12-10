@@ -2,10 +2,13 @@
  * EmotionWave Sentiment Analysis API
  * 
  * This module provides real-time sentiment analysis of news articles from multiple sources.
- * Currently uses GDELT API sentiment values, normalized to [-1, 1] range.
+ * Uses GDELT API sentiment values, normalized to [-1, 1] range.
  * 
- * Note: HuggingFace integration is prepared but not currently used.
- * To enable: analyze article text with HuggingFace models instead of using GDELT tone values.
+ * Features:
+ * - Dynamic date range (last 24 hours)
+ * - Sentiment normalization to [-1, 1]
+ * - Weighted average based on article count
+ * - Fallback data when API unavailable
  */
 
 import { defineEventHandler } from 'h3'

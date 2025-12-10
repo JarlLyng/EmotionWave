@@ -1,20 +1,90 @@
 # Code review — EmotionWave
 
+## Status: ✅ De fleste kritiske problemer er løst
+
+---
+
 ## Kritiske fund
-- **API matcher ikke beskrivelsen** (`server/api/advanced-sentiment.ts:9-170`): `HfInference` initialiseres med `HUGGINGFACE_API_KEY`, men HuggingFace anvendes aldrig. Vi bruger kun GDELTs `sentiment/tone` værdier (ofte udenfor [-1,1]) og startdatoen er hårdt sat til 20240601, så data kan være måneder gamle og misvisende. Justér til en dynamisk tidsperiode (fx seneste 24h), clamp/normalisér værdier, og brug HuggingFace på artikeltekst (eller fjern afhængigheden/secret helt).
-- **Base paths og assets er låst til `/EmotionWave/`** (`nuxt.config.ts:24-48`, `public/manifest.json`, `public/sw.js`): Alle ikoner/manifest/OG-links bruger hardkodet path, hvilket giver 404 i lokale builds og andre produktionsmiljøer end GitHub Pages. `og:image` peger desuden på en fil der ikke findes. Hent base fra runtime-config (`app.baseURL`), generér URLs med `joinURL`/`new URL`, og tilføj eller fjern den manglende OG-billede-reference.
-- **Offline/PWA dækker ikke bundle-filer** (`public/sw.js:1-46`): Service worker cacher kun index + ikoner og fanger ikke `_nuxt` assets, så offline-mode og “PWA” løfterne i README stemmer ikke. Brug Nuxt/Vite PWA plugin eller en pre-cache liste med hashed assets + runtime caching-strategi pr. asset-type.
-- **Fejl skjules og URL-join er skrøbelig** (`composables/useSentiment.ts:55-106`): Ethvert fetch-fejlscenario nulstilles til pseudo-tilfældige data uden at informere brugeren (`error` bliver altid `null`). Samtidig kan `.replace(/\/+/g, '/')` ødelægge absolutte base-URL’er (`https://` → `https:/`). Vis tydeligt når fallback-data bruges, bevar fejltekst til UI’et og byg API-URL med `joinURL`/`new URL` i stedet for regex.
-- **Secret-hygiejne** (`.env`): Der ligger en fuld HuggingFace API-nøgle i `.env`. Selvom filen ignoreres, er der lækagerisiko via commit/logs. Roter nøglen og brug kun eksempelværdier i repoet.
+
+### ✅ LØST: API matcher ikke beskrivelsen
+**Status**: Delvist løst
+- ✅ Dynamisk tidsperiode implementeret (seneste 24 timer)
+- ✅ Sentiment-værdier normaliseres til [-1, 1] med `normalizeSentiment()`
+- ✅ Vægtet gennemsnit baseret på artikelantal implementeret
+- ⚠️ **ÅBENT**: HuggingFace integration er ikke implementeret. Pakken er fjernet fra `package.json`, men kommentarer i koden nævner den stadig. Enten implementer HuggingFace på artikeltekst eller fjern alle referencer.
+
+### ✅ LØST: Base paths og assets er låst til `/EmotionWave/`
+**Status**: Løst
+- ✅ Alle paths er nu dynamiske baseret på `app.baseURL` fra runtime config
+- ✅ Manifest.json, ikoner og service worker bruger dynamiske paths
+- ✅ `og:image` meta tag er fjernet (filen eksisterede ikke)
+- ✅ Fungerer både lokalt og på GitHub Pages
+
+### ⚠️ DELVIS LØST: Offline/PWA dækker ikke bundle-filer
+**Status**: Forbedret, men kan optimeres
+- ✅ Service worker forsøger at cache `_nuxt` assets dynamisk
+- ⚠️ **FORBEDRING**: Overvej at bruge Nuxt PWA plugin eller en mere robust pre-cache strategi med hashed assets
+
+### ✅ LØST: Fejl skjules og URL-join er skrøbelig
+**Status**: Løst
+- ✅ API-URL bruger nu `new URL()` constructor i stedet for regex
+- ✅ Fallback-data vises tydeligt i UI (brugeren ser når demo-data bruges)
+- ✅ Fejlbeskeder vises korrekt i `SentimentMeter` komponenten
+
+### ✅ LØST: Secret-hygiejne
+**Status**: Løst
+- ✅ `.env` er i `.gitignore` og bliver ikke committet
+- ✅ `.env.example` er oprettet med placeholder-værdier
+- ✅ README opdateret med sikkerhedsnoter om API key rotation
+
+---
 
 ## Vedligeholdelses- og kvalitetsfund
-- **SEO-filer peger på andet domæne** (`public/robots.txt`, `public/sitemap.xml`, `nuxt.config.ts:39`): Filerne bruger `emotionwave.dk`, mens README peger på GitHub Pages. Det giver forkerte sitemap-links og social previews. Generér disse værdier fra den aktuelle `siteUrl` konfig.
-- **Data- og fejlkvalitet** (`server/api/advanced-sentiment.ts:135-172`): GDELT-værdier clamped ikke til [-1,1], og gennemsnittet vægter alle kilder ens uanset artikelantal. Tilføj validering, vægt efter artikelcount og log/returnér hvilke kilder der faktisk indgår.
-- **Ubrugte/beskrevne afhængigheder** (`package.json`): `@huggingface/inference`, `cheerio`, `@vueuse/motion` m.fl. er ikke i brug. Det forlænger install/build og øger angrebsflade. Fjern dem eller implementér det tilsigtede brug.
-- **Typer og ressourcer** (`composables/useSentiment.ts:28`, `components/VisualLayer.vue`): `NodeJS.Timeout` i browserkode og brede `any`-typer gør lint/IDE svagere. Brug browser-typer (`number`, `THREE.Scene` osv.) for bedre tooling og færre runtime-overraskelser.
+
+### ⚠️ DELVIS LØST: SEO-filer peger på andet domæne
+**Status**: Opdateret, men ikke helt dynamisk
+- ✅ `robots.txt` og `sitemap.xml` er opdateret til GitHub Pages URL
+- ⚠️ **FORBEDRING**: Filerne er stadig statiske. Overvej at generere dem dynamisk ved build-time baseret på `NUXT_PUBLIC_SITE_URL`
+
+### ✅ LØST: Data- og fejlkvalitet
+**Status**: Løst
+- ✅ GDELT-værdier normaliseres til [-1, 1] med `normalizeSentiment()`
+- ✅ Vægtet gennemsnit baseret på artikelantal implementeret
+- ✅ Logging tilføjet for at vise hvilke kilder der indgår
+
+### ✅ LØST: Ubrugte/beskrevne afhængigheder
+**Status**: Løst
+- ✅ `@huggingface/inference` fjernet fra `package.json`
+- ✅ `cheerio` og `@types/cheerio` fjernet
+- ✅ `@vueuse/motion` fjernet
+- ✅ Alle ubrugte dependencies er fjernet
+
+### ✅ LØST: Typer og ressourcer
+**Status**: Løst
+- ✅ `NodeJS.Timeout` ændret til `number` i `useSentiment.ts`
+- ✅ `any` typer erstattet med specifikke THREE.js typer (`THREE.Scene`, `THREE.PerspectiveCamera`, etc.)
 
 ## Forslag til næste skridt
-1) Afklar deployments (GitHub Pages vs. custom domæne) og gør base-URL, manifest, meta-tags og service worker konfigurerbare.  
-2) Beslut om HuggingFace skal bruges rigtigt; implementér tekstanalyse eller drop secret + afhængighed.  
-3) Indfør synlig fejlhåndtering/fallback-indikator i UI’et og test både online/offline flows.  
-4) Ryd op i ubrugte pakker, stram typerne og overvej et par basale tests (fx enhedstest af `useSentiment` og integrationstest af API’et med mockede svar).
+
+### ✅ Færdiggjort
+1) ✅ Base-URL, manifest, meta-tags og service worker er nu konfigurerbare via `baseURL`  
+3) ✅ Synlig fejlhåndtering/fallback-indikator er implementeret i UI  
+4) ✅ Ubrugte pakker er fjernet, typer er strammet
+
+### ⚠️ Åbent
+2) **Beslut om HuggingFace**: Pakken er fjernet, men kommentarer i koden nævner den stadig. Enten:
+   - Implementer HuggingFace tekstanalyse på artikeltekst (fx med `@xenova/transformers` for lokal kørsel)
+   - Eller fjern alle referencer til HuggingFace fra kode og dokumentation
+
+### 🎯 Nye forslag
+5) **Forbedre service worker**: Overvej Nuxt PWA plugin eller mere robust pre-cache strategi  
+6) **Dynamisk SEO-filer**: Generer `robots.txt` og `sitemap.xml` dynamisk ved build-time  
+7) **Tests**: Tilføj enhedstest for `useSentiment` og integrationstest for API med mockede svar  
+8) **Vis datakilde i UI**: Vis tydeligt hvilke kilder/fallbacks der er aktive (fx "Live fra GDELT" vs. "Fallback: syntetisk")
+
+## API-anbefalinger (gratis)
+- Behold GDELT som primær nyhedskilde, men brug et kort dynamisk tidsvindue (seneste 24h), hold `maxrecords` lavt, clamp/normalisér tone-værdier og vægt kilder efter artikelantal.
+- Drop remote HuggingFace Inference i drift (gratis kvote er minimal); kør lokal model med `@xenova/transformers` (fx `distilbert-base-uncased-finetuned-sst-2-english` eller en multilingual variant) eller et simpelt lexicon (`vader-sentiment`/`wink-sentiment`) for nul API-forbrug.
+- Supplér med gratis signaler uden nøgle: Reddit JSON (fx top/hot fra relevante subreddits) og Hacker News Algolia API (`front_page` tag) for tech/nyheds-stemning; filtrér reklamer og meget korte posts.
+- Hvis du vil have en nøgle-baseret men gratis tier nyheds-API: `GNews` eller `Newsdata.io` (små kvoter) kan bruges som sekundær kilde; cache hårdt for at holde dig under limits.
+- Vis tydeligt i UI hvilke kilder/fallbacks der er aktive (fx “Live fra GDELT + Reddit” vs. “Fallback: syntetisk”), så brugeren forstår datakvaliteten.
