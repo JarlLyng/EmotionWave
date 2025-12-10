@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://emotionwave.dk/sitemap.xml
+# Sitemap will be generated dynamically based on NUXT_PUBLIC_SITE_URL
+# Default: https://jarllyng.github.io/EmotionWave/sitemap.xml

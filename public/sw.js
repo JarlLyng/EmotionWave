@@ -1,57 +1,102 @@
-const CACHE_NAME = 'emotionwave-v1'
-const urlsToCache = [
-  '/EmotionWave/',
-  '/EmotionWave/favicon.ico',
-  '/EmotionWave/manifest.json'
+const CACHE_NAME = 'emotionwave-v2'
+const STATIC_CACHE_NAME = 'emotionwave-static-v2'
+
+// Get base path from service worker scope
+const getBasePath = () => {
+  const scope = self.registration?.scope || self.location.pathname.replace(/sw\.js$/, '')
+  return scope.endsWith('/') ? scope.slice(0, -1) : scope
+}
+
+const basePath = getBasePath()
+
+// Static assets to cache on install
+const staticUrlsToCache = [
+  `${basePath}/`,
+  `${basePath}/favicon.ico`,
+  `${basePath}/manifest.json`,
+  `${basePath}/apple-touch-icon.png`
 ]
 
-// Install event
+// Install event - cache static assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(STATIC_CACHE_NAME)
       .then((cache) => {
-        console.log('Opened cache')
-        // Cache kun de filer vi ved eksisterer
-        return cache.addAll(urlsToCache.filter(url => {
-          // Undgå at cache dynamiske filer med hash
-          return !url.includes('_nuxt/') || url.includes('entry.') || url.includes('favicon.ico') || url.includes('manifest.json')
-        }))
+        console.log('Caching static assets:', staticUrlsToCache)
+        return cache.addAll(staticUrlsToCache)
       })
       .catch((error) => {
-        console.log('Cache addAll failed:', error)
-        // Hvis addAll fejler, cache kun de grundlæggende filer
-        return caches.open(CACHE_NAME).then(cache => {
-          return cache.add('/EmotionWave/')
-        })
+        console.warn('Cache addAll failed:', error)
+        // Continue even if caching fails
       })
   )
+  // Skip waiting to activate immediately
+  self.skipWaiting()
 })
 
-// Fetch event
+// Fetch event - cache strategy: network first, fallback to cache
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url)
+  
+  // Skip cross-origin requests
+  if (url.origin !== location.origin) {
+    return
+  }
+  
+  // Cache strategy for different asset types
   event.respondWith(
     caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request)
-      })
-      .catch(() => {
-        // Hvis både cache og fetch fejler, return en fallback
-        if (event.request.destination === 'document') {
-          return caches.match('/EmotionWave/')
+      .then((cachedResponse) => {
+        // For _nuxt assets (JS/CSS), prefer cache for offline support
+        if (url.pathname.includes('/_nuxt/')) {
+          return cachedResponse || fetch(event.request).then((response) => {
+            // Cache successful responses
+            if (response.ok) {
+              const responseClone = response.clone()
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseClone)
+              })
+            }
+            return response
+          })
         }
-        return new Response('', { status: 404 })
+        
+        // For other requests, network first
+        return fetch(event.request)
+          .then((response) => {
+            // Cache successful responses
+            if (response.ok && (event.request.destination === 'script' || 
+                               event.request.destination === 'style' ||
+                               event.request.destination === 'image')) {
+              const responseClone = response.clone()
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseClone)
+              })
+            }
+            return response
+          })
+          .catch(() => {
+            // Fallback to cache if network fails
+            if (cachedResponse) {
+              return cachedResponse
+            }
+            // Fallback to index for navigation requests
+            if (event.request.destination === 'document') {
+              return caches.match(`${basePath}/`)
+            }
+            return new Response('', { status: 404 })
+          })
       })
   )
 })
 
-// Activate event
+// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
+          if (cacheName !== CACHE_NAME && cacheName !== STATIC_CACHE_NAME) {
             console.log('Deleting old cache:', cacheName)
             return caches.delete(cacheName)
           }
@@ -59,4 +104,6 @@ self.addEventListener('activate', (event) => {
       )
     })
   )
+  // Take control of all pages immediately
+  return self.clients.claim()
 }) 

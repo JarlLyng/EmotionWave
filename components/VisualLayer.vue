@@ -24,14 +24,14 @@ const getSentimentClass = computed(() => {
 
 const container = ref<HTMLDivElement | null>(null)
 const isLoaded = ref(false)
-let scene: any
-let camera: any
-let renderer: any
-let particles: any
+let scene: THREE.Scene | null = null
+let camera: THREE.PerspectiveCamera | null = null
+let renderer: THREE.WebGLRenderer | null = null
+let particles: THREE.Points | null = null
 let mousePosition = { x: 0, y: 0 }
 let animationId: number | null = null
-let threeModule: any = null
-let THREE: any = null
+let threeModule: typeof import('three') | null = null
+let THREE: typeof import('three') | null = null
 
 // Lazy load Three.js
 const loadThreeJS = async () => {
@@ -80,7 +80,7 @@ const initScene = async () => {
 }
 
 // Opret partikler med optimeret antal
-const createParticles = (THREE: any) => {
+const createParticles = (THREE: typeof import('three')) => {
   const particleCount = window.innerWidth < 768 ? 1000 : 2000 // Færre partikler på mobile
   const geometry = new THREE.BufferGeometry()
   const positions = new Float32Array(particleCount * 3)
@@ -127,7 +127,7 @@ const createParticles = (THREE: any) => {
 }
 
 // Optimiseret animation loop
-const animate = () => {
+const animate = (): void => {
   if (!particles || !renderer || !scene || !camera) {
     animationId = null
     return

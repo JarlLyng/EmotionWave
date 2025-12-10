@@ -10,8 +10,12 @@ import { onMounted } from 'vue'
 // Register service worker for PWA functionality
 onMounted(() => {
   if ('serviceWorker' in navigator) {
-    const swPath = process.env.NODE_ENV === 'production' ? '/EmotionWave/sw.js' : '/sw.js'
-    const scope = process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/'
+    const config = useRuntimeConfig()
+    const baseURL = config.app.baseURL || '/'
+    
+    // Build service worker path dynamically
+    const swPath = `${baseURL}sw.js`.replace(/\/+/g, '/')
+    const scope = baseURL
     
     navigator.serviceWorker.register(swPath, { scope })
       .then((registration) => {

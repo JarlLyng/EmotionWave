@@ -135,9 +135,13 @@ npm install
 
 3. **Create a `.env` file:**
 ```env
+# Copy from .env.example or create new
 HUGGINGFACE_API_KEY=your_api_key_here
 NUXT_PUBLIC_SITE_URL=http://localhost:3000
+NUXT_PUBLIC_BASE_URL=/
 ```
+
+**⚠️ Security Note**: Never commit `.env` files to git. If your API key has been exposed, rotate it immediately in your HuggingFace account settings.
 
 4. **Start the development server:**
 ```bash
@@ -196,6 +200,7 @@ This project is deployed on GitHub Pages and available at [https://jarllyng.gith
 |----------|-------------|----------|---------|
 | `HUGGINGFACE_API_KEY` | HuggingFace API key for sentiment analysis | Yes (for API) | - |
 | `NUXT_PUBLIC_SITE_URL` | Public URL of the site | No | `http://localhost:3000` |
+| `NUXT_PUBLIC_BASE_URL` | Base URL path (e.g., `/EmotionWave/` for GitHub Pages) | No | `/` (dev) or `/EmotionWave/` (prod) |
 
 ### Nuxt Configuration
 

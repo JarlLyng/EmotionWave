@@ -23,9 +23,10 @@ export function useSentiment() {
   })
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const isUsingFallback = ref(false) // Track if using fallback data
   const sources = ref<Record<string, number>>({})
   
-  let intervalId: NodeJS.Timeout | null = null
+  let intervalId: number | null = null
   let animationFrameId: number | null = null
   
   // Funktion til at animere overgangen
@@ -59,12 +60,17 @@ export function useSentiment() {
       // Get baseURL from runtime config to handle GitHub Pages subdirectory
       const config = useRuntimeConfig()
       const baseURL = config.app.baseURL || '/'
-      const apiUrl = `${baseURL}api/advanced-sentiment`.replace(/\/+/g, '/')
+      
+      // Build API URL properly using URL constructor to avoid regex issues
+      const baseUrlObj = new URL(baseURL, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
+      const apiUrl = new URL('api/advanced-sentiment', baseUrlObj).toString()
+      
+      isUsingFallback.value = false
       
       const response = await fetch(apiUrl)
       if (!response.ok) {
         // If API is not available (e.g., on static hosting), use fallback
-        throw new Error('API not available')
+        throw new Error(`API returned ${response.status}: ${response.statusText}`)
       }
       const data = await response.json()
       
@@ -85,7 +91,12 @@ export function useSentiment() {
       }
     } catch (e) {
       // Fallback to dynamic time-based data if API is not available
-      console.warn('API not available, using fallback data:', e)
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error'
+      console.warn('API not available, using fallback data:', errorMessage)
+      
+      isUsingFallback.value = true
+      error.value = 'Using demo data (API unavailable)' // Show user that fallback is active
+      
       const now = Date.now()
       const hour = new Date(now).getHours()
       const minute = new Date(now).getMinutes()
@@ -96,7 +107,6 @@ export function useSentiment() {
       const fallbackScore = Math.max(-1, Math.min(1, baseScore + variation))
       
       targetScore.value = fallbackScore
-      error.value = null // Don't show error for fallback
       
       if (!animationFrameId) {
         animateTransition()
@@ -136,6 +146,7 @@ export function useSentiment() {
     sentimentDetails,
     isLoading,
     error,
+    isUsingFallback,
     sources,
     fetchSentiment,
     startPolling,

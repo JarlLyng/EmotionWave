@@ -6,6 +6,7 @@
       :score="sentimentScore" 
       :is-loading="isLoading" 
       :error="error"
+      :is-using-fallback="isUsingFallback"
       @retry="fetchSentiment"
     />
     <InfoDialog />
@@ -20,7 +21,7 @@ import SentimentMeter from '~/components/SentimentMeter.vue'
 import InfoDialog from '~/components/InfoDialog.vue'
 import { useSentiment } from '~/composables/useSentiment'
 
-const { sentimentScore, isLoading, error, fetchSentiment, startPolling, stopPolling } = useSentiment()
+const { sentimentScore, isLoading, error, isUsingFallback, fetchSentiment, startPolling, stopPolling } = useSentiment()
 
 onMounted(() => {
   fetchSentiment()

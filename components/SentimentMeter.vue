@@ -21,8 +21,11 @@
       <span v-else-if="error" class="error-indicator">{{ error }}</span>
       <span v-else>{{ formatScore }}</span>
     </div>
+    <div v-if="isUsingFallback" class="fallback-indicator">
+      <span class="fallback-text">📡 Demo data (API unavailable)</span>
+    </div>
     <button 
-      v-if="error" 
+      v-if="error && !isUsingFallback" 
       @click="$emit('retry')"
       class="retry-button"
     >
@@ -38,6 +41,7 @@ const props = defineProps<{
   score: number
   isLoading: boolean
   error?: string | null
+  isUsingFallback?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -147,6 +151,17 @@ const formatScore = computed(() => {
 .retry-button:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.4);
+}
+
+.fallback-indicator {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.fallback-text {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
 }
 
 .label {

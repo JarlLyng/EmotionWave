@@ -2,11 +2,12 @@
  * EmotionWave Sentiment Analysis API
  * 
  * This module provides real-time sentiment analysis of news articles from multiple sources.
- * It uses HuggingFace's text classification model to analyze the sentiment of articles
- * and combines the results into an overall sentiment score.
+ * Currently uses GDELT API sentiment values, normalized to [-1, 1] range.
+ * 
+ * Note: HuggingFace integration is prepared but not currently used.
+ * To enable: analyze article text with HuggingFace models instead of using GDELT tone values.
  */
 
-import { HfInference } from '@huggingface/inference'
 import { defineEventHandler } from 'h3'
 
 interface GDELTResponse {
@@ -29,11 +30,39 @@ interface SentimentData {
 }
 
 // Cache configuration
-const CACHE_DURATION = 30 * 1000 // 30 sekunder i stedet for 10 minutter for testing
+const CACHE_DURATION = 30 * 1000 // 30 seconds
 let cachedData: SentimentData | null = null
 
-// Initialize HuggingFace client
-const hf = new HfInference(process.env.HUGGINGFACE_API_KEY)
+/**
+ * Get dynamic date range for GDELT query (last 24 hours)
+ */
+function getDateRange(): string {
+  const now = new Date()
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+  
+  // Format: YYYYMMDDHHMMSS
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    const seconds = String(date.getSeconds()).padStart(2, '0')
+    return `${year}${month}${day}${hours}${minutes}${seconds}`
+  }
+  
+  return formatDate(yesterday)
+}
+
+/**
+ * Normalize sentiment value to [-1, 1] range
+ */
+function normalizeSentiment(value: number): number {
+  // GDELT tone values can be outside [-1, 1], so we clamp and normalize
+  // Typical GDELT range is approximately [-10, 10]
+  const clamped = Math.max(-10, Math.min(10, value))
+  return Math.max(-1, Math.min(1, clamped / 10))
+}
 
 // Dynamisk fallback data baseret på tid
 function getDynamicFallbackData(): SentimentData {
@@ -82,6 +111,9 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 sekunder timeout
     
+    // Get dynamic date range (last 24 hours)
+    const startDateTime = getDateRange()
+    
     // Hent nyheder fra GDELT med timeout
     const response = await fetch(
       'https://api.gdeltproject.org/api/v2/doc/doc?' +
@@ -90,7 +122,7 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
       '&format=json' +
       '&maxrecords=30' + // Begræns til 30 artikler
       '&sort=hybridrel' + // Sorter efter relevans
-      '&startdatetime=20240601000000', // Start fra 1. juni 2024
+      `&startdatetime=${startDateTime}`, // Dynamisk: seneste 24 timer
       {
         signal: controller.signal,
         headers: {
@@ -132,13 +164,16 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
       return getDynamicFallbackData()
     }
     
-    // Normaliser artikler til forventet format
-    const normalizedArticles = articles.map((article: any) => ({
-      sentiment: article.sentiment || article.tone || 0,
-      url: article.url || article.shareurl || '',
-      title: article.title || article.seo || '',
-      source: article.source || article.domain || 'Unknown'
-    }))
+    // Normaliser artikler til forventet format og normaliser sentiment værdier
+    const normalizedArticles = articles.map((article: any) => {
+      const rawSentiment = article.sentiment || article.tone || 0
+      return {
+        sentiment: normalizeSentiment(rawSentiment), // Normaliser til [-1, 1]
+        url: article.url || article.shareurl || '',
+        title: article.title || article.seo || '',
+        source: article.source || article.domain || 'Unknown'
+      }
+    })
     
     // Gruppér artikler efter kilde
     const sourceGroups = normalizedArticles.reduce((acc, article) => {
@@ -150,24 +185,34 @@ async function fetchAndAnalyzeNews(): Promise<SentimentData> {
       return acc
     }, {} as Record<string, typeof normalizedArticles>)
 
-    // Beregn sentiment for hver kilde
+    // Beregn vægtet sentiment for hver kilde (vægt efter artikelantal)
     const sources = Object.entries(sourceGroups).map(([name, articles]) => {
       const avgSentiment = articles.reduce((sum, article) => sum + article.sentiment, 0) / articles.length
-      console.log(`${name} sentiment score: ${avgSentiment.toFixed(2)} (${articles.length} articles)`)
+      const articleCount = articles.length
+      console.log(`${name} sentiment score: ${avgSentiment.toFixed(2)} (${articleCount} articles)`)
       return {
         name,
-        score: avgSentiment,
-        articles: articles.length
+        score: normalizeSentiment(avgSentiment), // Ensure normalized
+        articles: articleCount,
+        weight: articleCount // Weight for weighted average
       }
     })
 
-    // Beregn gennemsnitlig sentiment
-    const averageSentiment = sources.reduce((sum, source) => sum + source.score, 0) / sources.length
-    console.log(`Overall sentiment score: ${averageSentiment.toFixed(2)}`)
+    // Beregn vægtet gennemsnitlig sentiment (vægt efter artikelantal)
+    const totalWeight = sources.reduce((sum, source) => sum + source.weight, 0)
+    const weightedAverage = totalWeight > 0
+      ? sources.reduce((sum, source) => sum + (source.score * source.weight), 0) / totalWeight
+      : 0
+    
+    const averageSentiment = normalizeSentiment(weightedAverage)
+    console.log(`Overall weighted sentiment score: ${averageSentiment.toFixed(2)} (from ${sources.length} sources, ${normalizedArticles.length} total articles)`)
+    
+    // Return sources without weight field
+    const sourcesForResponse = sources.map(({ weight, ...rest }) => rest)
     
     return {
       score: averageSentiment,
-      sources,
+      sources: sourcesForResponse,
       timestamp: Date.now()
     }
   } catch (error) {
