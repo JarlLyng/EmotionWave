@@ -12,7 +12,7 @@
     >
       <span class="sound-icon">
         <span v-if="isLoading" class="loading-spinner"></span>
-        <span v-else-if="needsInteraction">👆</span>
+        <span v-else-if="needsInteraction">🎵</span>
         <span v-else>{{ isPlaying ? '🔊' : '🔇' }}</span>
       </span>
     </button>
@@ -277,10 +277,10 @@ onUnmounted(() => {
 .sound-controls {
   position: fixed;
   bottom: 2rem;
-  left: 2rem;
+  right: 2rem;
   z-index: 50;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 1rem;
   align-items: center;
 }
@@ -386,7 +386,7 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .sound-controls {
     bottom: 1rem;
-    left: 1rem;
+    right: 1rem;
   }
   
   .sound-button {

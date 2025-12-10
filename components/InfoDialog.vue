@@ -26,11 +26,11 @@
         @click="isOpen = false"
       >
         <div 
-          class="bg-white/5 backdrop-blur-2xl rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden p-8"
+          class="dialog-container bg-white/5 backdrop-blur-2xl rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden"
           @click.stop
         >
           <!-- Header -->
-          <div class="flex justify-between items-start p-8 pb-6">
+          <div class="flex justify-between items-start pb-6">
             <div class="space-y-3">
               <h2 class="text-4xl font-light text-white tracking-tight">
                 About EmotionWave
@@ -51,9 +51,9 @@
           </div>
 
           <!-- Content -->
-          <div class="p-8 space-y-8 overflow-y-auto max-h-[60vh]">
+          <div class="content-section overflow-y-auto max-h-[60vh]">
             <!-- Description -->
-            <div class="space-y-4">
+            <div class="content-block">
               <p class="text-white/80 text-lg leading-relaxed font-light">
                 EmotionWave is an interactive artwork that visualizes the world's mood in real-time. 
                 Through sentiment analysis of news articles from various sources, the installation creates 
@@ -62,64 +62,71 @@
             </div>
 
             <!-- How it works -->
-            <div class="space-y-6">
-              <h3 class="text-2xl font-light text-white flex items-center gap-3">
+            <div class="content-block">
+              <h3 class="text-2xl font-light text-white mb-4">
                 How it works
               </h3>
-              <div class="grid gap-4">
-                <div class="flex items-start gap-4 p-6 rounded-xl">
-                  <p class="text-white/70 text-base">News articles are analyzed every 30 seconds using AI</p>
-                </div>
-                <div class="flex items-start gap-4 p-6 rounded-xl">
-                  <p class="text-white/70 text-base">Sentiment score ranges from -1 (negative) to +1 (positive)</p>
-                </div>
-                <div class="flex items-start gap-4 p-6 rounded-xl">
-                  <p class="text-white/70 text-base">Visual elements and ambient music adapt to the sentiment</p>
-                </div>
-                <div class="flex items-start gap-4 p-6 rounded-xl">
-                  <p class="text-white/70 text-base">Interactive particles respond to your mouse movements</p>
-                </div>
+              <div class="space-y-4">
+                <p class="text-white/70 text-base leading-relaxed">
+                  EmotionWave continuously analyzes news articles from global sources every 30 seconds. 
+                  Using AI-based sentiment analysis, it calculates a sentiment score ranging from -1 (negative) to +1 (positive).
+                </p>
+                <p class="text-white/70 text-base leading-relaxed">
+                  This score then influences all elements on the site: particles change color and movement, 
+                  ambient music shifts between minor and major scales, and the visual atmosphere automatically 
+                  adapts to the world's current mood.
+                </p>
+                <p class="text-white/70 text-base leading-relaxed">
+                  You can interact with the particles by moving your mouse around the screen. 
+                  The particles respond to your movement and create a dynamic, living experience.
+                </p>
               </div>
             </div>
 
             <!-- Visual elements -->
-            <div class="space-y-6">
-              <h3 class="text-2xl font-light text-white flex items-center gap-3">
+            <div class="content-block">
+              <h3 class="text-2xl font-light text-white mb-4">
                 Visual elements
               </h3>
-              <div class="grid gap-4">
-                <div class="flex items-start gap-4 p-6 rounded-xl">
-                  <p class="text-white/70 text-base">Particle system that changes color and movement based on sentiment</p>
-                </div>
-                <div class="flex items-start gap-4 p-6 rounded-xl">
-                  <p class="text-white/70 text-base">Sentiment meter showing the current global mood</p>
-                </div>
-                <div class="flex items-start gap-4 p-6 rounded-xl">
-                  <p class="text-white/70 text-base">Ambient music that shifts between minor and major scales</p>
-                </div>
+              <div class="space-y-4">
+                <p class="text-white/70 text-base leading-relaxed">
+                  <strong class="text-white/90">Particle system:</strong> A dynamic system with 1000-2000 particles 
+                  that change color and movement based on sentiment. The particles respond to mouse movements 
+                  and create a living, interactive visual experience.
+                </p>
+                <p class="text-white/70 text-base leading-relaxed">
+                  <strong class="text-white/90">Sentiment meter:</strong> A visual indicator showing the current 
+                  global mood. The meter displays how positive or negative the world's mood is right now.
+                </p>
+                <p class="text-white/70 text-base leading-relaxed">
+                  <strong class="text-white/90">Ambient music:</strong> Generative music that shifts between minor and major scales 
+                  based on sentiment. The music adapts automatically and creates an atmospheric audio experience 
+                  that complements the visual elements.
+                </p>
               </div>
             </div>
 
-            <!-- News sources -->
-            <div class="space-y-6">
-              <h3 class="text-2xl font-light text-white flex items-center gap-3">
-                News sources
+            <!-- Data sources -->
+            <div class="content-block">
+              <h3 class="text-2xl font-light text-white mb-4">
+                Data sources
               </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="p-6 rounded-xl">
-                  <p class="text-white/80 font-medium text-base">GDELT API</p>
-                  <p class="text-white/50 text-sm">Global news sentiment data</p>
-                </div>
-                <div class="p-6 rounded-xl">
-                  <p class="text-white/80 font-medium text-base">HuggingFace</p>
-                  <p class="text-white/50 text-sm">AI sentiment analysis</p>
-                </div>
+              <div class="space-y-4">
+                <p class="text-white/70 text-base leading-relaxed">
+                  EmotionWave uses the <strong class="text-white/90">GDELT API</strong> to fetch news articles 
+                  from global sources. GDELT indexes millions of news articles from around the world and provides 
+                  access to real-time sentiment data.
+                </p>
+                <p class="text-white/70 text-base leading-relaxed">
+                  The data is continuously analyzed, and sentiment scores are updated every 30 seconds to 
+                  give you the most current experience of the world's mood.
+                </p>
               </div>
             </div>
           </div>
 
           <!-- Footer -->
-          <div class="p-8 pt-6 bg-white/5">
+          <div class="footer-section bg-white/5">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-sm text-white/50">
               <div class="flex items-center gap-6">
                 <span class="flex items-center gap-2">
@@ -132,7 +139,7 @@
                   Tone.js
                 </span>
               </div>
-              <p class="text-white/30">Sentiment analysis powered by HuggingFace</p>
+              <p class="text-white/30">Bygget med Nuxt 3, Three.js og Tone.js</p>
             </div>
           </div>
         </div>
@@ -148,6 +155,26 @@ const isOpen = ref(false)
 </script>
 
 <style scoped>
+.dialog-container {
+  padding: 2rem;
+}
+
+.content-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.content-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.footer-section {
+  padding: 1.5rem 2rem;
+  margin: 0 -2rem -2rem -2rem;
+}
+
 /* Custom scrollbar */
 .overflow-y-auto::-webkit-scrollbar {
   width: 6px;
@@ -170,6 +197,19 @@ const isOpen = ref(false)
 @media (max-width: 768px) {
   .max-w-4xl {
     max-width: 95vw;
+  }
+  
+  .dialog-container {
+    padding: 1.5rem;
+  }
+  
+  .content-section {
+    gap: 2rem;
+  }
+  
+  .footer-section {
+    padding: 1rem 1.5rem;
+    margin: 0 -1.5rem -1.5rem -1.5rem;
   }
   
   .p-8 {

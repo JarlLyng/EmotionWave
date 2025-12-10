@@ -16,11 +16,6 @@
         <span class="label positive">Positiv</span>
       </div>
     </div>
-    <div class="score-display" :style="{ color: getMeterColor }">
-      <span v-if="isLoading" class="loading-indicator">Loading...</span>
-      <span v-else-if="error && !isUsingFallback" class="error-indicator">{{ error }}</span>
-      <span v-else>{{ formatScore }}</span>
-    </div>
     <div v-if="isUsingFallback" class="fallback-badge">
       <span class="fallback-icon">📡</span>
       <span class="fallback-text">Demo data</span>
@@ -49,11 +44,6 @@ const emit = defineEmits<{
   (e: 'retry'): void
 }>()
 
-const formattedScore = computed(() => {
-  if (typeof props.score !== 'number') return '0.00'
-  return props.score.toFixed(2)
-})
-
 const sentimentScore = computed(() => {
   if (typeof props.score !== 'number') return 0
   return props.score
@@ -65,20 +55,15 @@ const getMeterColor = computed(() => {
   if (props.score > 0) return '#00C851'
   return '#ffbb33'
 })
-
-const formatScore = computed(() => {
-  if (typeof props.score !== 'number') return '0.00'
-  return formattedScore.value
-})
 </script>
 
 <style scoped>
 .sentiment-meter {
   position: fixed;
-  bottom: 3rem;
-  left: 3rem;
+  bottom: 2rem;
+  left: 2rem;
   background-color: rgba(0, 0, 0, 0.8);
-  padding: 2rem;
+  padding: 1rem 1rem 0.3rem 1rem;
   border-radius: 1.5rem;
   backdrop-filter: blur(10px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
@@ -111,30 +96,6 @@ const formatScore = computed(() => {
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.7);
   margin-bottom: 0.5rem;
-}
-
-.score-display {
-  text-align: center;
-  font-size: 2rem;
-  font-weight: bold;
-  margin-top: 1rem;
-  transition: color 0.5s ease-out;
-  min-height: 2.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.loading-indicator {
-  font-size: 1rem;
-  opacity: 0.7;
-  animation: pulse 2s infinite;
-}
-
-.error-indicator {
-  font-size: 0.875rem;
-  color: #ff4444;
-  opacity: 0.9;
 }
 
 .retry-button {
@@ -195,15 +156,11 @@ const formatScore = computed(() => {
   .sentiment-meter {
     bottom: 2rem;
     left: 2rem;
-    padding: 1.5rem;
+    padding: 0.75rem;
   }
   
   .meter-container {
     width: 200px;
-  }
-  
-  .score-display {
-    font-size: 1.5rem;
   }
 }
 </style> 
