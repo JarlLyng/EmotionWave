@@ -14,8 +14,7 @@ Create a data-driven artwork where the website changes in real-time based on glo
 - **UI**: TailwindCSS 4.1.17
 - **Visuals**: Three.js 0.181.2 for particle effects (lazy loaded)
 - **Audio**: Tone.js 15.1.22 for generative ambient sound (lazy loaded)
-- **Data**: HuggingFace Inference API for sentiment analysis
-- **News Sources**: GDELT API
+- **Data**: GDELT API for news sentiment analysis
 - **PWA**: Service Worker for offline functionality
 - **TypeScript**: Full type safety throughout the application
 
@@ -27,7 +26,6 @@ Create a data-driven artwork where the website changes in real-time based on glo
 - Interactive mouse-based particle movement
 - Smooth 60fps animations and transitions
 - Responsive design with mobile optimization
-- Loading states and performance optimizations
 - GPU-accelerated rendering with WebGL
 
 ### Audio Experience
@@ -39,7 +37,6 @@ Create a data-driven artwork where the website changes in real-time based on glo
   - Positive (0.5 to 1): C major, uplifting
 - Reverb and delay effects for atmospheric sound
 - Volume control with smooth transitions
-- Lazy loading for better performance
 - User interaction required to start audio (browser policy)
 
 ### Sentiment Analysis
@@ -47,16 +44,14 @@ Create a data-driven artwork where the website changes in real-time based on glo
 - Multiple news sources for balanced sentiment
 - 30-second cache to limit API calls
 - Sentiment score range: -1 (negative) to +1 (positive)
-- Smooth animated transitions between sentiment scores using requestAnimationFrame
+- Smooth animated transitions between sentiment scores
 - Automatic fallback to dynamic time-based data if API fails
-- Error handling with user-friendly messages
 
 ### Progressive Web App (PWA)
 - Offline functionality with service worker
 - Installable on mobile devices
 - Fullscreen experience
 - Optimized for mobile performance
-- Manifest.json for app-like experience
 
 ## 📊 Sentiment Visualization Mapping
 
@@ -67,60 +62,14 @@ Create a data-driven artwork where the website changes in real-time based on glo
 | `0 to 0.5`    | Neutral, light gradient        | F major, flowing    | Blue (#3b82f6) |
 | `0.5 to 1`    | Warm, bubbling, colorful       | C major, uplifting  | Yellow (#eab308) |
 
-## 🗂️ Project Structure
-
-```
-EmotionWave/
-│
-├── .github/
-│   └── workflows/
-│       └── deploy.yml          # GitHub Actions CI/CD workflow
-│
-├── assets/
-│   ├── css/
-│   │   └── main.css           # Global styles
-│   └── visuals/               # Visual assets
-│
-├── components/
-│   ├── VisualLayer.vue        # Three.js particle system (optimized)
-│   ├── SentimentMeter.vue     # UI component for score display
-│   ├── AmbientSound.vue       # Tone.js audio system (optimized)
-│   └── InfoDialog.vue         # Information dialog with project details
-│
-├── composables/
-│   └── useSentiment.ts        # Sentiment data fetching and state management
-│
-├── pages/
-│   └── index.vue              # Main application view
-│
-├── public/
-│   ├── manifest.json          # PWA manifest
-│   ├── sw.js                  # Service worker
-│   ├── favicon.ico            # Site favicon
-│   └── apple-touch-icon.png   # iOS app icon
-│
-├── server/
-│   └── api/
-│       ├── advanced-sentiment.ts  # Main sentiment analysis endpoint
-│       ├── sentiment.ts           # Alternative sentiment endpoint
-│       └── reddit-sentiment.ts    # Reddit-based sentiment (unused)
-│
-├── app.vue                    # Root component (service worker registration)
-├── nuxt.config.ts             # Nuxt configuration
-├── tailwind.config.js         # TailwindCSS configuration
-├── tsconfig.json              # TypeScript configuration
-└── package.json               # Dependencies and scripts
-```
-
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
 
 - Node.js 20.x or higher
 - npm or yarn
-- HuggingFace API key (for sentiment analysis)
 
-### Local Development
+### Installation
 
 1. **Clone the repository:**
 ```bash
@@ -133,15 +82,11 @@ cd EmotionWave
 npm install
 ```
 
-3. **Create a `.env` file:**
+3. **Create a `.env` file** (optional):
 ```env
-# Copy from .env.example or create new
-HUGGINGFACE_API_KEY=your_api_key_here
 NUXT_PUBLIC_SITE_URL=http://localhost:3000
 NUXT_PUBLIC_BASE_URL=/
 ```
-
-**⚠️ Security Note**: Never commit `.env` files to git. If your API key has been exposed, rotate it immediately in your HuggingFace account settings.
 
 4. **Start the development server:**
 ```bash
@@ -157,130 +102,13 @@ The application will be available at `http://localhost:3000`
 - `npm run generate` - Generate static site for deployment
 - `npm run preview` - Preview production build locally
 
-## 🚀 Deployment
+## 📚 Documentation
 
-### GitHub Pages (Current)
-
-This project is deployed on GitHub Pages and available at [https://jarllyng.github.io/EmotionWave/](https://jarllyng.github.io/EmotionWave/)
-
-**Automatic Deployment:**
-- GitHub Actions workflow automatically builds and deploys on every push to `main` or `master`
-- Configured in `.github/workflows/deploy.yml`
-- Uses official GitHub Pages deployment action
-
-**Setup Requirements:**
-1. Go to repository **Settings** → **Pages**
-2. Set **Source** to "GitHub Actions"
-3. Configure repository secrets:
-   - `HUGGINGFACE_API_KEY` (required for build)
-   - `NUXT_PUBLIC_SITE_URL` (optional, defaults to GitHub Pages URL)
-
-**Known Limitations:**
-- GitHub Pages is static hosting, so server-side API routes (`/api/*`) are not available
-- The application uses fallback data when API is unavailable
-- For full API functionality, deploy to a platform supporting serverless functions (Vercel, Netlify, etc.)
-
-### Alternative Deployment Options
-
-**Vercel/Netlify:**
-- Supports server-side API routes
-- Automatic deployments from GitHub
-- Better performance and features
-
-**Self-hosted:**
-- Requires Node.js server
-- Full SSR and API support
-- More control over infrastructure
-
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `HUGGINGFACE_API_KEY` | HuggingFace API key for sentiment analysis | Yes (for API) | - |
-| `NUXT_PUBLIC_SITE_URL` | Public URL of the site | No | `http://localhost:3000` |
-| `NUXT_PUBLIC_BASE_URL` | Base URL path (e.g., `/EmotionWave/` for GitHub Pages) | No | `/` (dev) or `/EmotionWave/` (prod) |
-
-### Nuxt Configuration
-
-Key configuration in `nuxt.config.ts`:
-
-- **baseURL**: `/EmotionWave/` for GitHub Pages, `/` for root deployment
-- **buildAssetsDir**: `_nuxt/` (relative to baseURL)
-- **Prerendering**: Enabled for static generation
-- **TailwindCSS**: Integrated via `@nuxtjs/tailwindcss`
-
-### Sentiment Analysis Configuration
-
-- **Update interval**: 30 seconds
-- **Cache duration**: 30 seconds (server-side)
-- **News sources**: GDELT API (Danish and English news)
-- **Fallback**: Dynamic time-based data if API fails
-- **Score range**: -1 (negative) to +1 (positive)
-
-### Performance Optimizations
-
-- **Code splitting**: Automatic with Nuxt
-- **Lazy loading**: Three.js and Tone.js loaded on demand
-- **Particle optimization**: 1000 particles on mobile, 2000 on desktop
-- **Throttled events**: Mouse and resize handlers throttled
-- **Service worker**: Caching for offline functionality
-- **Image optimization**: Optimized assets in public folder
-
-## 📱 Mobile Experience
-
-- Responsive design optimized for mobile devices
-- Touch-friendly controls
-- Reduced particle count (1000 vs 2000) for better performance
-- PWA support for app-like experience
-- Fullscreen mode support
-- Optimized bundle size
-
-## 🏗️ Architecture
-
-### Component Structure
-
-**VisualLayer.vue**
-- Manages Three.js scene, camera, and renderer
-- Creates and animates particle system
-- Handles mouse interaction
-- Updates colors based on sentiment
-
-**AmbientSound.vue**
-- Initializes Tone.js audio context
-- Generates ambient music based on sentiment
-- Manages volume control
-- Handles browser audio policy (requires user interaction)
-
-**SentimentMeter.vue**
-- Displays current sentiment score
-- Shows loading and error states
-- Provides retry functionality
-
-**InfoDialog.vue**
-- Modal dialog with project information
-- Responsive design
-- Smooth animations
-
-### State Management
-
-**useSentiment.ts Composable**
-- Manages sentiment score state
-- Handles API fetching with error handling
-- Implements smooth score transitions using requestAnimationFrame
-- Polls API every 30 seconds
-- Provides fallback data when API unavailable
-
-### API Architecture
-
-**Server API Routes** (`server/api/`)
-- `advanced-sentiment.ts`: Main endpoint using GDELT API
-- Handles caching (30 seconds)
-- Provides fallback data
-- Error handling and logging
-
-**Note**: Server API routes only work with SSR or serverless platforms, not static hosting.
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical architecture and component structure
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Deployment guides for various platforms
+- **[CONFIGURATION.md](./CONFIGURATION.md)** - Configuration options and environment variables
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Guidelines for contributing
+- **[REVIEW.md](./REVIEW.md)** - Code review findings and status
 
 ## 🐛 Known Issues & Limitations
 
@@ -296,30 +124,6 @@ Key configuration in `nuxt.config.ts`:
 3. **GDELT API Rate Limits**
    - May be rate-limited during high traffic
    - Fallback data ensures application always works
-
-## 🧪 Testing
-
-Currently no automated tests. Manual testing checklist:
-
-- [ ] Visual particles render correctly
-- [ ] Sentiment meter updates smoothly
-- [ ] Audio plays after user interaction
-- [ ] Responsive design works on mobile
-- [ ] Service worker registers correctly
-- [ ] Fallback data works when API unavailable
-
-## 🐛 Recent Fixes & Improvements
-
-- ✅ Fixed component duplication between `app.vue` and `pages/index.vue`
-- ✅ Improved `useSentiment` composable lifecycle management
-- ✅ Fixed VisualLayer animation loop scope issues
-- ✅ Enhanced SentimentMeter with proper loading and error states
-- ✅ Improved API endpoint error handling and response format handling
-- ✅ Fixed GitHub Pages deployment paths
-- ✅ Updated all to latest versions
-- ✅ Fixed security vulnerabilities
-- ✅ Added fallback data for static hosting
-- ✅ Improved GitHub Actions workflow
 
 ## 🔒 Security
 
@@ -337,21 +141,7 @@ Currently no automated tests. Manual testing checklist:
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Code Style
-
-- Use TypeScript for type safety
-- Follow Vue 3 Composition API patterns
-- Use composables for reusable logic
-- Keep components focused and small
-- Add comments for complex logic
+Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## 📝 License
 
@@ -359,12 +149,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Acknowledgments
 
-- **HuggingFace** for sentiment analysis API
+- **GDELT** for news data
 - **Tone.js** for audio synthesis
 - **Three.js** for 3D graphics and particle effects
-- **GDELT** for news data
 - **Nuxt** team for the amazing framework
-- All news sources for providing content
 
 ## 📞 Support
 

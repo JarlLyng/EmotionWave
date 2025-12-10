@@ -15,7 +15,12 @@ Thank you for your interest in contributing to EmotionWave! This document provid
 
 ## 📋 Development Setup
 
-See the main [README.md](README.md) for detailed setup instructions.
+See the main [README.md](README.md) for quick start instructions.
+
+For detailed information, see:
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Technical architecture
+- [CONFIGURATION.md](./CONFIGURATION.md) - Configuration options
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - Deployment guides
 
 ## 🎨 Code Style
 
@@ -65,7 +70,11 @@ Use clear, descriptive commit messages:
 
 ## 🔍 Pull Request Process
 
-1. **Update Documentation**: Update README.md if needed
+1. **Update Documentation**: Update relevant documentation files:
+   - [README.md](./README.md) - Quick start and overview
+   - [ARCHITECTURE.md](./ARCHITECTURE.md) - If architecture changes
+   - [CONFIGURATION.md](./CONFIGURATION.md) - If configuration changes
+   - [DEPLOYMENT.md](./DEPLOYMENT.md) - If deployment changes
 2. **Add Comments**: Comment complex logic
 3. **Test Thoroughly**: Test all affected features
 4. **Check Build**: Ensure `npm run generate` succeeds
