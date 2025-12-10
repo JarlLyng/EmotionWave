@@ -56,7 +56,12 @@ export function useSentiment() {
     error.value = null
 
     try {
-      const response = await fetch('/api/advanced-sentiment')
+      // Get baseURL from runtime config to handle GitHub Pages subdirectory
+      const config = useRuntimeConfig()
+      const baseURL = config.app.baseURL || '/'
+      const apiUrl = `${baseURL}api/advanced-sentiment`.replace(/\/+/g, '/')
+      
+      const response = await fetch(apiUrl)
       if (!response.ok) {
         throw new Error('Failed to fetch sentiment data')
       }
