@@ -1,5 +1,5 @@
-const CACHE_NAME = 'emotionwave-v2'
-const STATIC_CACHE_NAME = 'emotionwave-static-v2'
+const CACHE_NAME = 'emotionwave-v3'
+const STATIC_CACHE_NAME = 'emotionwave-static-v3'
 
 // Get base path from service worker scope
 const getBasePath = () => {
@@ -37,12 +37,20 @@ self.addEventListener('install', (event) => {
             const response = await fetch(`${basePath}/`)
             if (response.ok) {
               const html = await response.text()
-              // Extract _nuxt asset URLs from HTML (simplified approach)
-              const nuxtAssetRegex = /(_nuxt\/[^"'\s]+\.(js|css))/g
-              const matches = [...new Set(html.match(nuxtAssetRegex) || [])]
+              // Extract _nuxt asset URLs from HTML - match full paths including baseURL
+              // Match both relative paths (_nuxt/...) and absolute paths (/EmotionWave/_nuxt/...)
+              const nuxtAssetRegex = /(?:href|src)=["']([^"']*\/_nuxt\/[^"']+\.(js|css))["']/gi
+              const matches = [...new Set(Array.from(html.matchAll(nuxtAssetRegex), m => m[1]))]
               
-              // Cache discovered _nuxt assets
-              const nuxtUrls = matches.map(path => `${basePath}/${path}`)
+              // Normalize paths - ensure they're absolute
+              const nuxtUrls = matches.map(path => {
+                // If path starts with /, it's already absolute
+                if (path.startsWith('/')) {
+                  return path
+                }
+                // Otherwise, prepend basePath
+                return `${basePath}/${path}`
+              })
               if (nuxtUrls.length > 0) {
                 console.log('Precaching _nuxt assets:', nuxtUrls.length)
                 await Promise.all(

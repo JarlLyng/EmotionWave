@@ -8,11 +8,24 @@ export default defineEventHandler((event) => {
   const config = useRuntimeConfig()
   const baseURL = config.app?.baseURL || process.env.NUXT_PUBLIC_BASE_URL || 
                   (process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/')
+  const siteUrl = config.public?.siteUrl || process.env.NUXT_PUBLIC_SITE_URL || 
+                  'https://jarllyng.github.io/EmotionWave/'
   
-  const joinURL = (path: string) => {
+  // Build absolute URLs for icons to ensure they work correctly
+  const buildAbsoluteURL = (path: string) => {
     const base = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL
     const p = path.startsWith('/') ? path : `/${path}`
-    return `${base}${p}`
+    const relativePath = `${base}${p}`
+    
+    // Convert to absolute URL if siteUrl is available
+    if (siteUrl && siteUrl.startsWith('http')) {
+      try {
+        return new URL(relativePath, siteUrl).toString()
+      } catch {
+        return relativePath
+      }
+    }
+    return relativePath
   }
   
   const manifest = {
@@ -26,12 +39,12 @@ export default defineEventHandler((event) => {
     orientation: 'portrait-primary',
     icons: [
       {
-        src: joinURL('favicon.ico'),
+        src: buildAbsoluteURL('favicon.ico'),
         sizes: '16x16 32x32',
         type: 'image/x-icon'
       },
       {
-        src: joinURL('apple-touch-icon.png'),
+        src: buildAbsoluteURL('apple-touch-icon.png'),
         sizes: '180x180',
         type: 'image/png'
       }
