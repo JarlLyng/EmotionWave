@@ -103,43 +103,77 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
     
     // Create AbortController for timeout
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 seconds timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 seconds timeout
     
     // Get dynamic date range (last 24 hours)
     const dateRange = getDateRange()
     
-    // Focused query: news about current events, politics, technology, society
-    const focusedQuery = '(language:dan OR language:eng) AND (politics OR technology OR society OR economy OR climate OR health) NOT (sport OR entertainment OR celebrity)'
+    // Very simple query: just get recent news in Danish or English
+    // Complex queries can cause issues with GDELT API
+    const query = 'language:dan OR language:eng'
+    
+    // Build URL with proper encoding
+    const params = new URLSearchParams({
+      query: query,
+      mode: 'artlist',
+      format: 'json',
+      maxrecords: '50', // Get more records to have better data
+      sort: 'hybridrel',
+      startdatetime: dateRange.start,
+      enddatetime: dateRange.end
+    })
+    
+    const apiUrl = `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`
+    console.log('GDELT API URL:', apiUrl)
     
     // Fetch from GDELT API
-    const response = await fetch(
-      'https://api.gdeltproject.org/api/v2/doc/doc?' +
-      `query=${encodeURIComponent(focusedQuery)}` +
-      '&mode=artlist' +
-      '&format=json' +
-      '&maxrecords=30' +
-      '&sort=hybridrel' +
-      `&startdatetime=${dateRange.start}` +
-      `&enddatetime=${dateRange.end}`,
-      {
-        signal: controller.signal,
-        headers: {
-          'User-Agent': 'EmotionWave/1.0'
-        }
+    const response = await fetch(apiUrl, {
+      signal: controller.signal,
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0'
       }
-    )
+    })
 
     clearTimeout(timeoutId)
 
+    // Read response as text first to handle both JSON and error messages
+    const responseText = await response.text()
+    
     if (!response.ok) {
-      console.error('GDELT API error:', response.status, response.statusText)
-      throw new Error('GDELT API fejl')
+      console.error('GDELT API HTTP error:', response.status, response.statusText)
+      console.error('Response body:', responseText.substring(0, 500))
+      throw new Error(`GDELT API HTTP ${response.status}: ${responseText.substring(0, 100)}`)
     }
 
-    const data: any = await response.json()
+    // Try to parse as JSON
+    let data: any
+    try {
+      data = JSON.parse(responseText)
+    } catch (parseError) {
+      // If parsing fails, check if it's an error message
+      console.error('Failed to parse GDELT response as JSON')
+      console.error('Response text:', responseText.substring(0, 500))
+      
+      // Check for common error messages
+      if (responseText.toLowerCase().includes('error') || 
+          responseText.toLowerCase().includes('invalid') ||
+          responseText.toLowerCase().includes('one or more')) {
+        throw new Error(`GDELT API error: ${responseText.substring(0, 200)}`)
+      }
+      
+      throw new Error('Invalid JSON response from GDELT API')
+    }
     
     // Handle different response formats from GDELT
     let articles: GDELTResponse['articles'] = []
+    
+    // Check for error messages in response
+    if (data.error || data.message || (typeof data === 'string' && data.toLowerCase().includes('error'))) {
+      console.error('GDELT API returned error:', data.error || data.message || data)
+      throw new Error('GDELT API returned error response')
+    }
     
     if (Array.isArray(data)) {
       articles = data
@@ -147,8 +181,14 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
       articles = data.articles
     } else if (data.results && Array.isArray(data.results)) {
       articles = data.results
+    } else if (data.docs && Array.isArray(data.docs)) {
+      articles = data.docs
     } else {
-      console.log('Unexpected GDELT response format:', typeof data)
+      console.log('Unexpected GDELT response format:', typeof data, Object.keys(data || {}))
+      // If response looks like an error message, throw
+      if (typeof data === 'string' || (data && typeof data === 'object' && !Array.isArray(data))) {
+        throw new Error('GDELT API returned unexpected format')
+      }
       return getDynamicFallbackData()
     }
     
@@ -217,9 +257,100 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
     }
   } catch (error) {
     console.error('Error fetching sentiment data from GDELT:', error)
+    
+    // If first attempt failed, try a simpler query without date range
+    if (error instanceof Error && error.name !== 'AbortError') {
+      try {
+        console.log('Retrying with simpler query (no date range)...')
+        const simpleParams = new URLSearchParams({
+          query: 'language:eng',
+          mode: 'artlist',
+          format: 'json',
+          maxrecords: '30',
+          sort: 'hybridrel'
+        })
+        
+        const simpleResponse = await fetch(
+          `https://api.gdeltproject.org/api/v2/doc/doc?${simpleParams.toString()}`,
+          {
+            headers: {
+              'Accept': 'application/json'
+            }
+          }
+        )
+        
+        if (simpleResponse.ok) {
+          const simpleText = await simpleResponse.text()
+          const simpleData = JSON.parse(simpleText)
+          
+          // Process the simpler response
+          let articles: GDELTResponse['articles'] = []
+          if (Array.isArray(simpleData)) {
+            articles = simpleData
+          } else if (simpleData.articles && Array.isArray(simpleData.articles)) {
+            articles = simpleData.articles
+          } else if (simpleData.results && Array.isArray(simpleData.results)) {
+            articles = simpleData.results
+          }
+          
+          if (articles && articles.length > 0) {
+            console.log('Successfully fetched data with simpler query')
+            // Process articles same way as before
+            const normalizedArticles = articles.map((article: any) => {
+              const rawSentiment = article.sentiment || article.tone || 0
+              const clampedSentiment = Math.max(-10, Math.min(10, rawSentiment))
+              return {
+                sentiment: clampedSentiment,
+                url: article.url || article.shareurl || '',
+                title: article.title || article.seo || '',
+                source: article.source || article.domain || 'Unknown'
+              }
+            })
+            
+            const sourceGroups = normalizedArticles.reduce((acc, article) => {
+              const source = article.source
+              if (!acc[source]) {
+                acc[source] = []
+              }
+              acc[source].push(article)
+              return acc
+            }, {} as Record<string, typeof normalizedArticles>)
+
+            const sources = Object.entries(sourceGroups).map(([name, articles]) => {
+              const rawAvgSentiment = articles.reduce((sum, article) => sum + article.sentiment, 0) / articles.length
+              return {
+                name,
+                rawScore: rawAvgSentiment,
+                score: normalizeSentiment(rawAvgSentiment),
+                articles: articles.length,
+                weight: articles.length
+              }
+            })
+
+            const totalWeight = sources.reduce((sum, source) => sum + source.weight, 0)
+            const rawWeightedAverage = totalWeight > 0
+              ? sources.reduce((sum, source) => sum + (source.rawScore * source.weight), 0) / totalWeight
+              : 0
+            
+            const averageSentiment = normalizeSentiment(rawWeightedAverage)
+            const sourcesForResponse = sources.map(({ weight, rawScore, ...rest }) => rest)
+            
+            return {
+              score: averageSentiment,
+              sources: sourcesForResponse,
+              timestamp: Date.now()
+            }
+          }
+        }
+      } catch (retryError) {
+        console.error('Retry also failed:', retryError)
+      }
+    }
+    
     if (error instanceof Error && error.name === 'AbortError') {
       console.log('Request timed out, using dynamic fallback data')
     }
+    
     return getDynamicFallbackData()
   }
 }
