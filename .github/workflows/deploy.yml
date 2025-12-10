@@ -18,16 +18,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-
+      
       - name: Install dependencies
         run: npm ci
-
+      
       - name: Build
         env:
           HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
@@ -35,26 +35,17 @@ jobs:
           NUXT_PUBLIC_SITE_URL: ${{ secrets.NUXT_PUBLIC_SITE_URL }}
         run: npm run generate
 
-      - name: Prepare deployment
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-        run: |
-          mkdir -p deploy
-          cp -r .output/public/* deploy/
-          # Create EmotionWave directory structure for GitHub Pages
-          mkdir -p deploy/EmotionWave
-          cp -r .output/public/* deploy/EmotionWave/
-
       - name: Setup Pages
         uses: actions/configure-pages@v4
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-
+      
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          path: ./deploy
+          path: ./.output/public
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v4 
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
