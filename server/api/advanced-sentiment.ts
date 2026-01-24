@@ -118,7 +118,9 @@ function normalizeSentiment(value: number): number {
  */
 async function fetchGDELTNews(): Promise<Article[]> {
   const dateRange = getDateRange()
-  const focusedQuery = '(language:dan OR language:eng) AND (politics OR technology OR society OR economy OR climate OR health OR world OR international) NOT (sport OR entertainment OR celebrity OR gossip OR fashion)'
+  // Removed language:dan filter as GDELT doesn't support it in query syntax
+  // GDELT doc API will return articles in various languages, we filter by relevance instead
+  const focusedQuery = '(politics OR technology OR society OR economy OR climate OR health OR world OR international) NOT (sport OR entertainment OR celebrity OR gossip OR fashion)'
   
   return retryWithBackoff(async () => {
     const controller = new AbortController()

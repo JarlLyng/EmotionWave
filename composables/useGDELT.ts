@@ -108,9 +108,10 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
     // Get dynamic date range (last 24 hours)
     const dateRange = getDateRange()
     
-    // Focused query: get relevant news in Danish or English
+    // Focused query: get relevant news (removed language filter as GDELT doesn't support language:dan syntax)
+    // GDELT doc API doesn't support language:dan in query - we'll filter by content relevance instead
     // More specific query to get higher quality, relevant news
-    const query = '(language:dan OR language:eng) AND (politics OR technology OR society OR economy OR climate OR health OR world OR international) NOT (sport OR entertainment OR celebrity OR gossip OR fashion)'
+    const query = '(politics OR technology OR society OR economy OR climate OR health OR world OR international) NOT (sport OR entertainment OR celebrity OR gossip OR fashion)'
     
     // Build URL with proper encoding
     const params = new URLSearchParams({
@@ -145,6 +146,18 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
       console.error('GDELT API HTTP error:', response.status, response.statusText)
       console.error('Response body:', responseText.substring(0, 500))
       throw new Error(`GDELT API HTTP ${response.status}: ${responseText.substring(0, 100)}`)
+    }
+
+    // Check for error messages before trying to parse JSON
+    // GDELT sometimes returns plain text error messages instead of JSON
+    if (responseText.toLowerCase().includes('error') || 
+        responseText.toLowerCase().includes('invalid') ||
+        responseText.toLowerCase().includes('one or more') ||
+        responseText.toLowerCase().includes('too short') ||
+        responseText.toLowerCase().includes('too long') ||
+        responseText.toLowerCase().includes('too common')) {
+      console.error('GDELT API returned an error message:', responseText.substring(0, 200))
+      throw new Error(`GDELT API error: ${responseText.substring(0, 200)}`)
     }
 
     // Try to parse as JSON
@@ -264,9 +277,9 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
     // If first attempt failed, try a simpler query without date range
     if (error instanceof Error && error.name !== 'AbortError') {
       try {
-        console.log('Retrying with simpler query (no date range)...')
+        console.log('Retrying with simpler query (no date range, no language filter)...')
         const simpleParams = new URLSearchParams({
-          query: 'language:eng',
+          query: 'politics OR technology OR world',
           mode: 'artlist',
           format: 'json',
           maxrecords: '30',
