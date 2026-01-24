@@ -63,10 +63,16 @@ export function useSentiment() {
       const baseURL = config.app.baseURL || '/'
       
       // Build API URL properly using URL constructor to avoid regex issues
+      // On Vercel with baseURL="/", this should result in /api/advanced-sentiment
       const baseUrlObj = new URL(baseURL, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
       const apiUrl = new URL('api/advanced-sentiment', baseUrlObj).toString()
       
-      console.log('Fetching sentiment from API:', apiUrl)
+      console.log('Fetching sentiment from API:', {
+        apiUrl,
+        baseURL,
+        origin: typeof window !== 'undefined' ? window.location.origin : 'N/A',
+        fullUrl: apiUrl
+      })
       isUsingFallback.value = false
       
       const response = await fetch(apiUrl)
