@@ -52,9 +52,20 @@ let cachedData: SentimentData | null = null
 // Runtime config for API keys
 const getConfig = () => {
   const config = useRuntimeConfig()
+  const huggingFaceKey = config.huggingFaceKey || process.env.HUGGINGFACE_API_KEY || null
+  const newsApiKey = config.newsApiKey || process.env.NEWS_API_KEY || null
+  
+  // Log API key availability (without exposing the key itself)
+  console.log('API keys status:', {
+    hasHuggingFaceKey: !!huggingFaceKey,
+    hasNewsApiKey: !!newsApiKey,
+    huggingFaceKeyLength: huggingFaceKey ? huggingFaceKey.length : 0,
+    newsApiKeyLength: newsApiKey ? newsApiKey.length : 0
+  })
+  
   return {
-    newsApiKey: config.newsApiKey || process.env.NEWS_API_KEY || null,
-    huggingFaceKey: config.huggingFaceKey || process.env.HUGGINGFACE_API_KEY || null
+    newsApiKey,
+    huggingFaceKey
   }
 }
 
@@ -178,26 +189,37 @@ async function fetchGDELTNews(): Promise<Article[]> {
  */
 async function analyzeSentimentWithHuggingFace(text: string, apiKey: string): Promise<number> {
   try {
-    // Try the new router endpoint first (Inference Providers)
-    // If that fails, fall back to keyword-based analysis
+    // Try multiple endpoints and models
+    // HuggingFace has changed their API structure, so we try multiple options
     const endpoints = [
+      // Standard Inference API endpoint
       'https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest',
-      'https://router.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest'
+      // Alternative: older model name
+      'https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment',
+      // Router endpoint (newer)
+      'https://router.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest',
+      // Alternative sentiment model
+      'https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english'
     ]
 
     for (const endpoint of endpoints) {
       try {
+        console.log(`Trying HuggingFace endpoint: ${endpoint}`)
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ inputs: text })
+          body: JSON.stringify({ inputs: text.substring(0, 500) }) // Limit text length
         })
 
+        const status = response.status
+        console.log(`HuggingFace response status: ${status} for endpoint: ${endpoint}`)
+
         // If model is loading, wait a bit and retry once
-        if (response.status === 503) {
+        if (status === 503) {
+          console.log('Model is loading, waiting 2 seconds...')
           await new Promise(resolve => setTimeout(resolve, 2000))
           const retryResponse = await fetch(endpoint, {
             method: 'POST',
@@ -205,27 +227,52 @@ async function analyzeSentimentWithHuggingFace(text: string, apiKey: string): Pr
               'Authorization': `Bearer ${apiKey}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ inputs: text })
+            body: JSON.stringify({ inputs: text.substring(0, 500) })
           })
           if (retryResponse.ok) {
             const retryData = await retryResponse.json()
+            console.log('HuggingFace retry response:', JSON.stringify(retryData).substring(0, 200))
             // Check if response indicates endpoint is deprecated
             if (retryData.error && retryData.error.includes('no longer supported')) {
+              console.log('Endpoint deprecated, trying next...')
               continue // Try next endpoint
             }
             return parseHuggingFaceSentiment(retryData)
+          } else {
+            const errorText = await retryResponse.text()
+            console.error(`HuggingFace retry failed with status ${retryResponse.status}: ${errorText.substring(0, 200)}`)
+            continue
           }
         }
 
         if (response.ok) {
           const data = await response.json()
+          console.log('HuggingFace response data:', JSON.stringify(data).substring(0, 200))
           // Check if response indicates endpoint is deprecated
           if (data.error && data.error.includes('no longer supported')) {
+            console.log('Endpoint deprecated, trying next...')
             continue // Try next endpoint
           }
           return parseHuggingFaceSentiment(data)
+        } else {
+          // Log error response for debugging
+          const errorText = await response.text()
+          console.error(`HuggingFace API error (status ${status}): ${errorText.substring(0, 300)}`)
+          
+          // Check for authentication errors
+          if (status === 401 || status === 403) {
+            console.error('HuggingFace authentication failed - check API key')
+            throw new Error(`HuggingFace authentication failed: ${errorText.substring(0, 100)}`)
+          }
+          
+          // Check for rate limiting
+          if (status === 429) {
+            console.error('HuggingFace rate limit exceeded')
+            throw new Error('HuggingFace rate limit exceeded')
+          }
         }
-      } catch (error) {
+      } catch (error: any) {
+        console.error(`HuggingFace endpoint ${endpoint} failed:`, error.message || error)
         // Continue to next endpoint if this one fails
         continue
       }
