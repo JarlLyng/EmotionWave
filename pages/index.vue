@@ -28,7 +28,7 @@ const { sentimentScore, isLoading, error, isUsingFallback, fetchSentiment, start
 
 // Structured data for SEO (JSON-LD)
 const config = useRuntimeConfig()
-const siteUrl = config.public?.siteUrl || process.env.NUXT_PUBLIC_SITE_URL || 'https://emotionwave.iamjarl.com'
+const siteUrl = config.public?.siteUrl || 'https://emotionwave.iamjarl.com'
 
 const structuredData = computed(() => {
   return JSON.stringify({
