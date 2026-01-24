@@ -55,6 +55,26 @@ function normalizeSentiment(value: number): number {
 }
 
 /**
+ * Keyword-based sentiment analysis (fallback when GDELT doesn't provide sentiment)
+ */
+function keywordBasedSentiment(text: string): number {
+  const lowerText = text.toLowerCase()
+  let sentiment = 0
+  
+  const positiveWords = ['good', 'great', 'positive', 'success', 'win', 'help', 'support', 'love', 'hope', 'progress', 'god', 'fantastisk', 'fremgang', 'lykkedes', 'victory', 'achievement', 'breakthrough', 'improvement']
+  const negativeWords = ['bad', 'terrible', 'negative', 'fail', 'loss', 'hate', 'angry', 'fear', 'crisis', 'war', 'dårlig', 'katastrofe', 'fejlet', 'krise', 'disaster', 'attack', 'violence', 'death']
+  
+  positiveWords.forEach(word => {
+    if (lowerText.includes(word)) sentiment += 0.1
+  })
+  negativeWords.forEach(word => {
+    if (lowerText.includes(word)) sentiment -= 0.1
+  })
+  
+  return Math.max(-10, Math.min(10, sentiment * 10))
+}
+
+/**
  * Get dynamic fallback data based on time
  */
 function getDynamicFallbackData(): SentimentData {
@@ -218,11 +238,17 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
     // Log sample article structure for debugging (before processing)
     if (articles.length > 0) {
       const sampleArticle = articles[0]
+      const allKeys = Object.keys(sampleArticle)
       console.log('Sample article structure:', {
         hasSentiment: 'sentiment' in sampleArticle,
         hasTone: 'tone' in sampleArticle,
         hasAvgTone: 'avgtone' in sampleArticle,
-        keys: Object.keys(sampleArticle).slice(0, 15)
+        keys: allKeys,
+        sampleValues: Object.fromEntries(
+          allKeys.slice(0, 10).map(key => [key, typeof sampleArticle[key] === 'string' 
+            ? sampleArticle[key].substring(0, 50) 
+            : sampleArticle[key]])
+        )
       })
     }
     
@@ -230,10 +256,17 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
     const normalizedArticles = articles.map((article: any) => {
       // GDELT may provide sentiment in different fields
       // Try multiple possible field names
-      const rawSentiment = article.sentiment || 
-                          article.tone || 
-                          article.avgtone || 
-                          (article.tone !== undefined ? article.tone : null)
+      let rawSentiment = article.sentiment || 
+                        article.tone || 
+                        article.avgtone || 
+                        article.avgtone || 
+                        (article.tone !== undefined ? article.tone : null)
+      
+      // If GDELT doesn't provide sentiment, use keyword-based analysis on title/description
+      if (rawSentiment === null || rawSentiment === undefined || rawSentiment === 0) {
+        const text = `${article.title || ''} ${article.seo || ''} ${article.description || ''}`.toLowerCase()
+        rawSentiment = keywordBasedSentiment(text)
+      }
       
       const clampedSentiment = rawSentiment !== null && rawSentiment !== undefined 
         ? Math.max(-10, Math.min(10, rawSentiment))
