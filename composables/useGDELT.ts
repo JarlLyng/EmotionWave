@@ -217,15 +217,50 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
     
     // Normalize articles
     const normalizedArticles = articles.map((article: any) => {
-      const rawSentiment = article.sentiment || article.tone || 0
-      const clampedSentiment = Math.max(-10, Math.min(10, rawSentiment))
+      // GDELT may provide sentiment in different fields
+      // Try multiple possible field names
+      const rawSentiment = article.sentiment || 
+                          article.tone || 
+                          article.avgtone || 
+                          article.avgtone || 
+                          (article.tone !== undefined ? article.tone : null)
+      
+      // If no sentiment data, skip this article or use 0
+      // Log a sample to help debug
+      if (normalizedArticles.length === 0 && !rawSentiment && rawSentiment !== 0) {
+        console.log('Sample article structure:', {
+          hasSentiment: 'sentiment' in article,
+          hasTone: 'tone' in article,
+          hasAvgTone: 'avgtone' in article,
+          keys: Object.keys(article).slice(0, 10)
+        })
+      }
+      
+      const clampedSentiment = rawSentiment !== null && rawSentiment !== undefined 
+        ? Math.max(-10, Math.min(10, rawSentiment))
+        : 0
+      
       return {
         sentiment: clampedSentiment,
         url: article.url || article.shareurl || '',
         title: article.title || article.seo || '',
-        source: article.source || article.domain || 'Unknown'
+        source: article.source || article.domain || article.domain || 'Unknown'
       }
     })
+    
+    // Log sentiment distribution for debugging
+    const sentimentValues = normalizedArticles.map(a => a.sentiment).filter(s => s !== 0)
+    if (sentimentValues.length > 0) {
+      console.log('Sentiment distribution:', {
+        nonZero: sentimentValues.length,
+        total: normalizedArticles.length,
+        min: Math.min(...sentimentValues),
+        max: Math.max(...sentimentValues),
+        avg: sentimentValues.reduce((a, b) => a + b, 0) / sentimentValues.length
+      })
+    } else {
+      console.warn('All articles have sentiment 0 - GDELT may not be providing sentiment data in expected format')
+    }
     
     // Group articles by source
     const sourceGroups = normalizedArticles.reduce((acc, article) => {
