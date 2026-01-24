@@ -111,7 +111,6 @@ The application will be available at `http://localhost:3000`
 - **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Deployment guides for various platforms
 - **[CONFIGURATION.md](./CONFIGURATION.md)** - Configuration options and environment variables
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Guidelines for contributing
-- **[REVIEW.md](./REVIEW.md)** - Code review findings and status
 
 ## 🐛 Known Issues & Limitations
 

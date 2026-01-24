@@ -113,9 +113,15 @@
               </h3>
               <div class="space-y-4">
                 <p class="text-white/70 text-base leading-relaxed">
-                  EmotionWave uses the <strong class="text-white/90">GDELT API</strong> to fetch news articles 
-                  from global sources. GDELT indexes millions of news articles from around the world and provides 
-                  access to real-time sentiment data.
+                  EmotionWave uses multiple data sources for sentiment analysis. The primary source is the 
+                  <strong class="text-white/90">GDELT API</strong>, which indexes millions of news articles 
+                  from around the world and provides access to real-time sentiment data.
+                </p>
+                <p class="text-white/70 text-base leading-relaxed">
+                  Additionally, the system can aggregate data from <strong class="text-white/90">NewsAPI</strong> 
+                  (optional, requires API key) and <strong class="text-white/90">Reddit</strong> (optional) 
+                  for a more comprehensive view of global sentiment. All sources are weighted and combined 
+                  to provide the most accurate sentiment score.
                 </p>
                 <p class="text-white/70 text-base leading-relaxed">
                   The data is continuously analyzed, and sentiment scores are updated every 30 seconds to 
@@ -139,7 +145,7 @@
                   Tone.js
                 </span>
               </div>
-              <p class="text-white/30">Bygget med Nuxt 3, Three.js og Tone.js</p>
+              <p class="text-white/30">Built with Nuxt 3, Three.js and Tone.js</p>
             </div>
           </div>
         </div>

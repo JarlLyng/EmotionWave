@@ -16,9 +16,11 @@ This project is currently deployed on GitHub Pages and available at [https://jar
 
 1. Go to repository **Settings** → **Pages**
 2. Set **Source** to "GitHub Actions"
-3. Configure repository secrets:
-   - `HUGGINGFACE_API_KEY` (required for build, though not used in static hosting)
+3. Configure repository secrets (all optional):
+   - `HUGGINGFACE_API_KEY` (optional, for future advanced sentiment analysis)
+   - `NEWS_API_KEY` (optional, improves accuracy with additional news sources)
    - `NUXT_PUBLIC_SITE_URL` (optional, defaults to GitHub Pages URL)
+   - `NUXT_PUBLIC_BASE_URL` (optional, defaults to `/EmotionWave/`)
 
 ### Configuration
 

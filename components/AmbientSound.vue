@@ -53,9 +53,9 @@ let toneModule: any = null
 let chordInterval: any = null
 
 const getButtonTitle = computed(() => {
-  if (isLoading.value) return 'Initialiserer lyd...'
-  if (needsInteraction.value) return 'Klik for at aktivere lyd'
-  return isPlaying.value ? 'Sluk lyd' : 'Tænd lyd'
+  if (isLoading.value) return 'Initializing audio...'
+  if (needsInteraction.value) return 'Click to enable audio'
+  return isPlaying.value ? 'Mute' : 'Unmute'
 })
 
 // Lazy load Tone.js
@@ -215,8 +215,8 @@ const toggleSound = async () => {
       console.log('Starter lydinitialisering...')
       isLoading.value = true
       
-      // Vent på brugerinteraktion før vi starter audio context
-      console.log('Venter på Tone.start()...')
+      // Wait for user interaction before starting audio context
+      console.log('Waiting for Tone.start()...')
       await initAudio()
       console.log('Lydsystem initialiseret')
       needsInteraction.value = false

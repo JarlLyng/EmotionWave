@@ -11,9 +11,9 @@
         ></div>
       </div>
       <div class="meter-labels">
-        <span class="label negative">Negativ</span>
+        <span class="label negative">Negative</span>
         <span class="label neutral">Neutral</span>
-        <span class="label positive">Positiv</span>
+        <span class="label positive">Positive</span>
       </div>
     </div>
     <div v-if="isUsingFallback" class="fallback-badge">
@@ -25,7 +25,7 @@
       @click="$emit('retry')"
       class="retry-button"
     >
-      Prøv igen
+      Retry
     </button>
   </div>
 </template>

@@ -72,6 +72,24 @@ This document describes the technical architecture and component structure of Em
   - Automatic fallback to time-based data
   - Error handling with user-friendly messages
   - Lifecycle management (start/stop polling)
+  - Falls back to client-side GDELT API when server API unavailable
+
+### useGDELT.ts Composable
+- **Purpose**: Client-side GDELT API integration for static hosting
+- **Responsibilities**:
+  - Fetches sentiment data directly from GDELT API (client-side)
+  - Works on static hosting (GitHub Pages) where server API routes are unavailable
+  - Handles GDELT API response parsing and normalization
+  - Provides dynamic fallback data based on time if API fails
+- **Key Features**:
+  - Direct client-side API calls to GDELT
+  - Dynamic date range queries (last 24 hours)
+  - Focused queries (filters out sports, entertainment, etc.)
+  - Sentiment normalization to [-1, 1] range
+  - Weighted average calculation across sources
+  - Automatic retry with simpler query if complex query fails
+  - Time-based fallback data when API unavailable
+- **Used by**: `useSentiment.ts` as fallback when server API is unavailable
 
 ## API Architecture
 
@@ -157,7 +175,8 @@ EmotionWave/
 │   └── InfoDialog.vue         # Information dialog
 │
 ├── composables/
-│   └── useSentiment.ts        # Sentiment data fetching and state management
+│   ├── useSentiment.ts        # Sentiment data fetching and state management
+│   └── useGDELT.ts            # Client-side GDELT API integration
 │
 ├── pages/
 │   └── index.vue              # Main application view
