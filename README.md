@@ -2,7 +2,7 @@
 
 A living Nuxt-based website that reacts to the world's mood. Through real-time sentiment analysis of news and social media, the site's visual expression — colors, animations, and atmosphere — changes automatically.
 
-🌐 **Live Site**: [https://jarllyng.github.io/EmotionWave/](https://jarllyng.github.io/EmotionWave/)
+🌐 **Live Site**: [https://emotionwave.iamjarl.com](https://emotionwave.iamjarl.com) (Vercel) | [GitHub Pages](https://jarllyng.github.io/EmotionWave/)
 
 ## 🎯 Project Purpose
 

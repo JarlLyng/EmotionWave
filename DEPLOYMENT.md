@@ -54,14 +54,17 @@ Vercel supports serverless functions, enabling full API functionality.
 2. **Environment Variables**:
    ```
    HUGGINGFACE_API_KEY=your_api_key
-   NUXT_PUBLIC_SITE_URL=https://your-app.vercel.app
+   NEWS_API_KEY=your_api_key
+   NUXT_PUBLIC_SITE_URL=https://emotionwave.iamjarl.com
    NUXT_PUBLIC_BASE_URL=/
    ```
+   **Note**: For custom domain, use your actual domain. For default Vercel domain, use `https://your-app.vercel.app`
 
 3. **Build Settings**:
-   - Build Command: `npm run generate`
-   - Output Directory: `.output/public`
+   - Build Command: `npm run build` (not `generate` - we need serverless functions)
+   - Output Directory: `.output` (not `.output/public`)
    - Install Command: `npm ci`
+   - Framework Preset: Nuxt.js (auto-detected)
 
 4. **Deploy**: Automatic on every push to main branch
 
