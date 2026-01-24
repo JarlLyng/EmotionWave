@@ -285,22 +285,54 @@ function parseHuggingFaceSentiment(data: any): number {
 
 /**
  * Fallback keyword-based sentiment analysis
+ * Improved to give more variation and better sentiment detection
  */
 function keywordBasedSentiment(text: string): number {
   const lowerText = text.toLowerCase()
   let sentiment = 0
   
-  const positiveWords = ['good', 'great', 'positive', 'success', 'win', 'help', 'support', 'love', 'hope', 'progress', 'god', 'fantastisk', 'fremgang', 'lykkedes']
-  const negativeWords = ['bad', 'terrible', 'negative', 'fail', 'loss', 'hate', 'angry', 'fear', 'crisis', 'war', 'dårlig', 'katastrofe', 'fejlet', 'krise']
+  // Expanded positive words with weights
+  const positiveWords: Array<[string, number]> = [
+    ['excellent', 0.3], ['amazing', 0.3], ['wonderful', 0.3], ['fantastic', 0.3],
+    ['great', 0.2], ['good', 0.15], ['positive', 0.2], ['success', 0.25],
+    ['win', 0.2], ['victory', 0.25], ['achievement', 0.2], ['breakthrough', 0.3],
+    ['help', 0.1], ['support', 0.15], ['love', 0.2], ['hope', 0.15],
+    ['progress', 0.2], ['improvement', 0.2], ['growth', 0.2], ['prosperity', 0.25],
+    ['peace', 0.2], ['unity', 0.15], ['cooperation', 0.15], ['innovation', 0.2],
+    ['fantastisk', 0.3], ['fremgang', 0.2], ['lykkedes', 0.2], ['succes', 0.2]
+  ]
   
-  positiveWords.forEach(word => {
-    if (lowerText.includes(word)) sentiment += 0.1
-  })
-  negativeWords.forEach(word => {
-    if (lowerText.includes(word)) sentiment -= 0.1
+  // Expanded negative words with weights
+  const negativeWords: Array<[string, number]> = [
+    ['terrible', 0.3], ['awful', 0.3], ['horrible', 0.3], ['disaster', 0.3],
+    ['bad', 0.15], ['negative', 0.2], ['fail', 0.2], ['failure', 0.25],
+    ['loss', 0.2], ['crisis', 0.3], ['war', 0.3], ['conflict', 0.25],
+    ['hate', 0.25], ['angry', 0.2], ['fear', 0.2], ['violence', 0.3],
+    ['death', 0.3], ['attack', 0.3], ['destruction', 0.3], ['collapse', 0.25],
+    ['dårlig', 0.2], ['katastrofe', 0.3], ['fejlet', 0.2], ['krise', 0.3],
+    ['krig', 0.3], ['vold', 0.25], ['frygt', 0.2]
+  ]
+  
+  // Count positive matches (allowing multiple occurrences)
+  positiveWords.forEach(([word, weight]) => {
+    const count = (lowerText.match(new RegExp(word, 'g')) || []).length
+    sentiment += count * weight
   })
   
-  return Math.max(-10, Math.min(10, sentiment * 10))
+  // Count negative matches (allowing multiple occurrences)
+  negativeWords.forEach(([word, weight]) => {
+    const count = (lowerText.match(new RegExp(word, 'g')) || []).length
+    sentiment -= count * weight
+  })
+  
+  // Normalize based on text length (longer texts can have more matches)
+  const textLength = text.split(/\s+/).length
+  const lengthFactor = Math.min(1, 100 / textLength) // Normalize for texts up to 100 words
+  
+  // Scale to GDELT range (-10 to 10)
+  const scaled = sentiment * 10 * lengthFactor
+  
+  return Math.max(-10, Math.min(10, scaled))
 }
 
 /**
