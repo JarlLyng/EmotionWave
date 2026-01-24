@@ -215,6 +215,17 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
       return getDynamicFallbackData()
     }
     
+    // Log sample article structure for debugging (before processing)
+    if (articles.length > 0) {
+      const sampleArticle = articles[0]
+      console.log('Sample article structure:', {
+        hasSentiment: 'sentiment' in sampleArticle,
+        hasTone: 'tone' in sampleArticle,
+        hasAvgTone: 'avgtone' in sampleArticle,
+        keys: Object.keys(sampleArticle).slice(0, 15)
+      })
+    }
+    
     // Normalize articles
     const normalizedArticles = articles.map((article: any) => {
       // GDELT may provide sentiment in different fields
@@ -222,19 +233,7 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
       const rawSentiment = article.sentiment || 
                           article.tone || 
                           article.avgtone || 
-                          article.avgtone || 
                           (article.tone !== undefined ? article.tone : null)
-      
-      // If no sentiment data, skip this article or use 0
-      // Log a sample to help debug
-      if (normalizedArticles.length === 0 && !rawSentiment && rawSentiment !== 0) {
-        console.log('Sample article structure:', {
-          hasSentiment: 'sentiment' in article,
-          hasTone: 'tone' in article,
-          hasAvgTone: 'avgtone' in article,
-          keys: Object.keys(article).slice(0, 10)
-        })
-      }
       
       const clampedSentiment = rawSentiment !== null && rawSentiment !== undefined 
         ? Math.max(-10, Math.min(10, rawSentiment))
@@ -244,7 +243,7 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
         sentiment: clampedSentiment,
         url: article.url || article.shareurl || '',
         title: article.title || article.seo || '',
-        source: article.source || article.domain || article.domain || 'Unknown'
+        source: article.source || article.domain || 'Unknown'
       }
     })
     
@@ -332,6 +331,16 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
         
         if (simpleResponse.ok) {
           const simpleText = await simpleResponse.text()
+          
+          // Check for error messages before parsing JSON
+          if (simpleText.toLowerCase().includes('error') || 
+              simpleText.toLowerCase().includes('invalid') ||
+              simpleText.toLowerCase().includes('one or more') ||
+              simpleText.toLowerCase().includes('queries co')) {
+            console.error('GDELT retry returned error:', simpleText.substring(0, 200))
+            throw new Error(`GDELT API error: ${simpleText.substring(0, 200)}`)
+          }
+          
           const simpleData = JSON.parse(simpleText)
           
           // Process the simpler response
