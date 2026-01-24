@@ -261,8 +261,13 @@ async function analyzeSentimentWithHuggingFace(text: string, apiKey: string): Pr
           
           // Check for authentication errors
           if (status === 401 || status === 403) {
-            console.error('HuggingFace authentication failed - check API key')
-            throw new Error(`HuggingFace authentication failed: ${errorText.substring(0, 100)}`)
+            console.error('HuggingFace authentication failed')
+            console.error('Possible causes:')
+            console.error('1. Invalid API key')
+            console.error('2. Token missing "Make calls to the serverless Inference API" permission')
+            console.error('3. Token may need "read" or "write" permissions (check HuggingFace token settings)')
+            console.error(`Error response: ${errorText.substring(0, 200)}`)
+            throw new Error(`HuggingFace authentication failed (${status}): ${errorText.substring(0, 100)}`)
           }
           
           // Check for rate limiting

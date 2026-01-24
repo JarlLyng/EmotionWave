@@ -24,7 +24,16 @@ NUXT_PUBLIC_BASE_URL=/
 
 **Getting API Keys**:
 - **NewsAPI**: Get a free API key at https://newsapi.org/register (100 requests/day free tier)
-- **HuggingFace**: Get an API key at https://huggingface.co/settings/tokens (optional, for future use)
+- **HuggingFace**: 
+  - **Recommended**: Create a fine-grained token with "Make calls to the serverless Inference API" permission
+    - Direct link: https://huggingface.co/settings/tokens/new?globalPermissions=inference.serverless.write&tokenType=fineGrained
+  - **Alternative**: Create a basic token with **"read and write"** permissions (not just "read")
+    - Go to https://huggingface.co/settings/tokens
+    - Click "New token"
+    - Select "Read and write" (not just "Read")
+  - Free accounts work fine, but need the correct permissions!
+  - The token should start with `hf_`
+  - If you get 401/403 errors, your token likely doesn't have the right permissions
 
 **Production**:
 - **GitHub Pages**: Set as repository secrets in GitHub Settings
