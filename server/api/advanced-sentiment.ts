@@ -172,7 +172,138 @@ async function fetchGDELTNews(): Promise<Article[]> {
 }
 
 /**
+ * Analyze sentiment using HuggingFace API
+ */
+async function analyzeSentimentWithHuggingFace(text: string, apiKey: string): Promise<number> {
+  try {
+    // Try the new router endpoint first (Inference Providers)
+    // If that fails, fall back to keyword-based analysis
+    const endpoints = [
+      'https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest',
+      'https://router.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest'
+    ]
+
+    for (const endpoint of endpoints) {
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ inputs: text })
+        })
+
+        // If model is loading, wait a bit and retry once
+        if (response.status === 503) {
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          const retryResponse = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ inputs: text })
+          })
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json()
+            // Check if response indicates endpoint is deprecated
+            if (retryData.error && retryData.error.includes('no longer supported')) {
+              continue // Try next endpoint
+            }
+            return parseHuggingFaceSentiment(retryData)
+          }
+        }
+
+        if (response.ok) {
+          const data = await response.json()
+          // Check if response indicates endpoint is deprecated
+          if (data.error && data.error.includes('no longer supported')) {
+            continue // Try next endpoint
+          }
+          return parseHuggingFaceSentiment(data)
+        }
+      } catch (error) {
+        // Continue to next endpoint if this one fails
+        continue
+      }
+    }
+
+    // If all endpoints fail, throw error to trigger fallback
+    throw new Error('All HuggingFace endpoints failed')
+  } catch (error) {
+    console.warn('HuggingFace sentiment analysis failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Parse HuggingFace sentiment response to GDELT scale (-10 to 10)
+ * HuggingFace returns: [{label: 'POSITIVE', score: 0.9}, {label: 'NEGATIVE', score: 0.05}, {label: 'NEUTRAL', score: 0.05}]
+ */
+function parseHuggingFaceSentiment(data: any): number {
+  // Handle array response
+  const results = Array.isArray(data) ? data[0] : data
+  
+  // Handle nested array (sometimes API returns [[{...}]])
+  const sentiment = Array.isArray(results) ? results[0] : results
+  
+  if (!sentiment || !Array.isArray(sentiment)) {
+    return 0 // Neutral if we can't parse
+  }
+
+  // Find the highest scoring label
+  let positiveScore = 0
+  let negativeScore = 0
+  let neutralScore = 0
+
+  sentiment.forEach((item: any) => {
+    const label = item.label?.toUpperCase() || ''
+    const score = item.score || 0
+    
+    if (label.includes('POSITIVE') || label.includes('POS')) {
+      positiveScore = score
+    } else if (label.includes('NEGATIVE') || label.includes('NEG')) {
+      negativeScore = score
+    } else if (label.includes('NEUTRAL') || label.includes('NEU')) {
+      neutralScore = score
+    }
+  })
+
+  // Convert to GDELT scale (-10 to 10)
+  // Positive: 0 to 10, Negative: -10 to 0, Neutral: around 0
+  if (positiveScore > negativeScore && positiveScore > neutralScore) {
+    return positiveScore * 10 // Scale 0-1 to 0-10
+  } else if (negativeScore > positiveScore && negativeScore > neutralScore) {
+    return -negativeScore * 10 // Scale 0-1 to -10-0
+  } else {
+    return 0 // Neutral
+  }
+}
+
+/**
+ * Fallback keyword-based sentiment analysis
+ */
+function keywordBasedSentiment(text: string): number {
+  const lowerText = text.toLowerCase()
+  let sentiment = 0
+  
+  const positiveWords = ['good', 'great', 'positive', 'success', 'win', 'help', 'support', 'love', 'hope', 'progress', 'god', 'fantastisk', 'fremgang', 'lykkedes']
+  const negativeWords = ['bad', 'terrible', 'negative', 'fail', 'loss', 'hate', 'angry', 'fear', 'crisis', 'war', 'dårlig', 'katastrofe', 'fejlet', 'krise']
+  
+  positiveWords.forEach(word => {
+    if (lowerText.includes(word)) sentiment += 0.1
+  })
+  negativeWords.forEach(word => {
+    if (lowerText.includes(word)) sentiment -= 0.1
+  })
+  
+  return Math.max(-10, Math.min(10, sentiment * 10))
+}
+
+/**
  * Fetch news from NewsAPI (if API key available)
+ * Fixed: NewsAPI language parameter now uses correct format (separate calls for en/da)
  */
 async function fetchNewsAPINews(): Promise<Article[]> {
   const config = getConfig()
@@ -181,71 +312,91 @@ async function fetchNewsAPINews(): Promise<Article[]> {
   }
   
   const dateRange = getDateRange()
+  const query = '(politics OR technology OR society OR economy OR climate OR health) NOT (sport OR entertainment OR celebrity)'
+  const allArticles: Article[] = []
   
-  return retryWithBackoff(async () => {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 8000)
-    
+  // NewsAPI language parameter only accepts single 2-letter ISO code
+  // Make separate calls for English and Danish
+  const languages = ['en', 'da']
+  
+  for (const lang of languages) {
     try {
-      // NewsAPI requires specific query format
-      const response = await fetch(
-        `https://newsapi.org/v2/everything?` +
-        `q=(politics OR technology OR society OR economy OR climate OR health) ` +
-        `NOT (sport OR entertainment OR celebrity)&` +
-        `language=en,da&` +
-        `from=${dateRange.isoStart.split('T')[0]}&` +
-        `to=${dateRange.isoEnd.split('T')[0]}&` +
-        `sortBy=relevancy&` +
-        `pageSize=30&` +
-        `apiKey=${config.newsApiKey}`,
-        {
-          signal: controller.signal,
-          headers: { 'User-Agent': 'EmotionWave/1.0' }
+      const articles = await retryWithBackoff(async () => {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 8000)
+        
+        try {
+          const response = await fetch(
+            `https://newsapi.org/v2/everything?` +
+            `q=${encodeURIComponent(query)}&` +
+            `language=${lang}&` +
+            `from=${dateRange.isoStart.split('T')[0]}&` +
+            `to=${dateRange.isoEnd.split('T')[0]}&` +
+            `sortBy=relevancy&` +
+            `pageSize=15&` +
+            `apiKey=${config.newsApiKey}`,
+            {
+              signal: controller.signal,
+              headers: { 'User-Agent': 'EmotionWave/1.0' }
+            }
+          )
+          
+          clearTimeout(timeoutId)
+          
+          if (!response.ok) {
+            throw new Error(`NewsAPI error: ${response.status}`)
+          }
+          
+          const data = await response.json()
+          
+          if (data.status !== 'ok' || !data.articles) {
+            return []
+          }
+          
+          return data.articles
+        } catch (error) {
+          clearTimeout(timeoutId)
+          throw error
         }
-      )
+      })
       
-      clearTimeout(timeoutId)
-      
-      if (!response.ok) {
-        throw new Error(`NewsAPI error: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      
-      if (data.status !== 'ok' || !data.articles) {
-        return []
-      }
-      
-      // NewsAPI doesn't provide sentiment, so we'll use a simple keyword-based approach
-      // In production, you'd use HuggingFace or similar for proper sentiment analysis
-      return data.articles.map((article: any) => {
-        const text = `${article.title} ${article.description || ''}`.toLowerCase()
+      // Analyze sentiment for each article
+      for (const article of articles) {
+        const text = `${article.title || ''} ${article.description || ''}`.trim()
+        if (!text) continue
+        
         let sentiment = 0
         
-        // Simple keyword-based sentiment (can be improved with HuggingFace)
-        const positiveWords = ['good', 'great', 'positive', 'success', 'win', 'help', 'support', 'love', 'hope', 'progress']
-        const negativeWords = ['bad', 'terrible', 'negative', 'fail', 'loss', 'hate', 'angry', 'fear', 'crisis', 'war']
+        // Try HuggingFace first if API key is available
+        // Note: HuggingFace API endpoints have changed, so we primarily use keyword-based
+        // HuggingFace integration is kept for future use when API stabilizes
+        if (config.huggingFaceKey) {
+          try {
+            sentiment = await analyzeSentimentWithHuggingFace(text, config.huggingFaceKey)
+          } catch (error) {
+            // Fallback to keyword-based if HuggingFace fails (expected for now)
+            sentiment = keywordBasedSentiment(text)
+          }
+        } else {
+          // Use keyword-based sentiment (current primary method)
+          sentiment = keywordBasedSentiment(text)
+        }
         
-        positiveWords.forEach(word => {
-          if (text.includes(word)) sentiment += 0.1
-        })
-        negativeWords.forEach(word => {
-          if (text.includes(word)) sentiment -= 0.1
-        })
-        
-        return {
-          sentiment: Math.max(-10, Math.min(10, sentiment * 10)), // Scale to GDELT range
+        allArticles.push({
+          sentiment: Math.max(-10, Math.min(10, sentiment)), // Already in GDELT scale
           url: article.url || '',
           title: article.title || '',
           source: article.source?.name || 'Unknown',
           publishedAt: article.publishedAt
-        }
-      })
+        })
+      }
     } catch (error) {
-      clearTimeout(timeoutId)
-      throw error
+      // Continue with other language if one fails
+      console.warn(`NewsAPI fetch failed for language ${lang}:`, error)
     }
-  })
+  }
+  
+  return allArticles
 }
 
 /**

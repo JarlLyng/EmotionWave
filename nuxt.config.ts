@@ -73,7 +73,14 @@ export default defineNuxtConfig({
           { rel: 'apple-touch-icon', href: joinURL('apple-touch-icon.png') },
           { rel: 'manifest', href: joinURL('manifest.json') }
         ]
-      })()
+      })(),
+      script: [
+        {
+          src: 'https://umami-iamjarl.vercel.app/script.js',
+          defer: true,
+          'data-website-id': 'd85d4bee-9f37-4812-9337-58a3cca2cc6f'
+        }
+      ]
     }
   }
 })
