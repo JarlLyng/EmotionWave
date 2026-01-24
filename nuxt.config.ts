@@ -31,23 +31,47 @@ export default defineNuxtConfig({
     baseURL: process.env.NUXT_PUBLIC_BASE_URL || (process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/'),
     buildAssetsDir: '_nuxt/',
     head: {
-      title: 'EmotionWave',
+      title: 'EmotionWave - A Living Website That Reacts to the World\'s Mood',
+      htmlAttrs: {
+        lang: 'en'
+      },
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1, user-scalable=no' },
-        { name: 'description', content: 'A living website that reacts to the world\'s mood' },
+        { name: 'description', content: 'EmotionWave is an interactive web experience that visualizes global sentiment in real-time. Watch as the world\'s mood changes through dynamic visuals and ambient sound, powered by live news analysis from GDELT, NewsAPI, and Reddit.' },
+        { name: 'keywords', content: 'sentiment analysis, global mood, real-time data visualization, news sentiment, interactive web, data art, emotion visualization, world mood tracker' },
+        { name: 'author', content: 'Jarl Lyng' },
         { name: 'theme-color', content: '#000000' },
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
         { name: 'apple-mobile-web-app-title', content: 'EmotionWave' },
-        { property: 'og:title', content: 'EmotionWave' },
-        { property: 'og:description', content: 'A living website that reacts to the world\'s mood' },
+        // Open Graph tags
+        { property: 'og:title', content: 'EmotionWave - A Living Website That Reacts to the World\'s Mood' },
+        { property: 'og:description', content: 'An interactive web experience that visualizes global sentiment in real-time through dynamic visuals and ambient sound.' },
         { property: 'og:type', content: 'website' },
         { property: 'og:url', content: process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/' },
-        // og:image removed - file doesn't exist, can be added later
+        { property: 'og:image', content: (() => {
+          const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/'
+          const baseURL = process.env.NUXT_PUBLIC_BASE_URL || '/'
+          const imagePath = baseURL.endsWith('/') ? `${baseURL}og-image.png` : `${baseURL}/og-image.png`
+          return siteUrl.endsWith('/') ? `${siteUrl}${imagePath.replace(/^\//, '')}` : `${siteUrl}${imagePath}`
+        })() },
+        { property: 'og:image:width', content: '1200' },
+        { property: 'og:image:height', content: '630' },
+        { property: 'og:image:alt', content: 'EmotionWave - Real-time global sentiment visualization' },
+        { property: 'og:site_name', content: 'EmotionWave' },
+        { property: 'og:locale', content: 'en_US' },
+        // Twitter Card tags
         { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:title', content: 'EmotionWave' },
-        { name: 'twitter:description', content: 'A living website that reacts to the world\'s mood' }
+        { name: 'twitter:title', content: 'EmotionWave - A Living Website That Reacts to the World\'s Mood' },
+        { name: 'twitter:description', content: 'An interactive web experience that visualizes global sentiment in real-time through dynamic visuals and ambient sound.' },
+        { name: 'twitter:image', content: (() => {
+          const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/'
+          const baseURL = process.env.NUXT_PUBLIC_BASE_URL || '/'
+          const imagePath = baseURL.endsWith('/') ? `${baseURL}og-image.png` : `${baseURL}/og-image.png`
+          return siteUrl.endsWith('/') ? `${siteUrl}${imagePath.replace(/^\//, '')}` : `${siteUrl}${imagePath}`
+        })() },
+        { name: 'twitter:image:alt', content: 'EmotionWave - Real-time global sentiment visualization' }
       ],
       link: (() => {
         // Generate links directly in config for SSR output
@@ -71,10 +95,13 @@ export default defineNuxtConfig({
           return `${base}${p}`
         }
         
+        const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/'
+        
         return [
           { rel: 'icon', type: 'image/x-icon', href: joinURL('favicon.ico') },
           { rel: 'apple-touch-icon', href: joinURL('apple-touch-icon.png') },
-          { rel: 'manifest', href: joinURL('manifest.json') }
+          { rel: 'manifest', href: joinURL('manifest.json') },
+          { rel: 'canonical', href: siteUrl }
         ]
       })(),
       script: [
