@@ -101,12 +101,16 @@ This document describes the technical architecture and component structure of Em
   - Aggregates sentiment from multiple news sources:
     - **GDELT API**: Primary source for global news sentiment
     - **NewsAPI**: Additional news sources (optional, requires API key)
+      - Uses HuggingFace Inference API for advanced sentiment analysis (optional)
+      - Falls back to keyword-based sentiment if HuggingFace unavailable
     - **Reddit**: Social media sentiment (optional, lower weight)
   - Calculates weighted average sentiment across all sources
   - Handles caching (30 seconds)
   - Provides fallback data when APIs unavailable
 - **Key Features**:
   - **Multi-source aggregation**: Combines data from multiple APIs for better accuracy
+  - **HuggingFace integration**: Optional advanced sentiment analysis via Inference API
+  - **Keyword-based fallback**: Enhanced keyword analysis with weighted scoring when APIs don't provide explicit sentiment
   - **Retry logic**: Exponential backoff for failed API calls (3 retries)
   - **Dynamic date range**: Last 24 hours of news
   - **Focused queries**: Filters out noise (sports, entertainment, etc.)
@@ -116,11 +120,26 @@ This document describes the technical architecture and component structure of Em
   - **Error handling**: Comprehensive error handling and logging
 
 #### Server Routes (`server/routes/`)
-- **manifest.json.ts**: Dynamic PWA manifest generation
-- **robots.txt.ts**: Dynamic robots.txt generation
-- **sitemap.xml.ts**: Dynamic sitemap.xml generation
+- **manifest.json.ts**: Dynamic PWA manifest generation with correct baseURL and icon paths
+- **robots.txt.ts**: Dynamic robots.txt generation with sitemap reference
+- **sitemap.xml.ts**: Dynamic sitemap.xml generation with current date
 
 **Note**: Server API routes only work with SSR or serverless platforms, not static hosting.
+
+### SEO Architecture
+
+#### Meta Tags & Structured Data
+- **Location**: `nuxt.config.ts` (head configuration) and `pages/index.vue` (structured data)
+- **Open Graph tags**: Complete OG tags for social sharing (title, description, image, URL)
+- **Twitter Cards**: Summary large image cards for Twitter sharing
+- **Structured Data**: JSON-LD schema.org WebApplication markup for rich snippets
+- **Canonical URLs**: Proper canonical links to prevent duplicate content
+- **Language tags**: HTML lang attribute for proper language detection
+
+#### SEO Files
+- **sitemap.xml**: Dynamically generated with current date
+- **robots.txt**: Dynamically generated with sitemap reference
+- **Favicons**: Complete favicon set (favicon.ico, apple-touch-icon-180x180.png, android-chrome icons)
 
 ## Data Flow
 
@@ -182,10 +201,13 @@ EmotionWave/
 │   └── index.vue              # Main application view
 │
 ├── public/
-│   ├── manifest.json          # PWA manifest (generated)
 │   ├── sw.js                  # Service worker
-│   ├── favicon.ico            # Site favicon
-│   └── apple-touch-icon.png   # iOS app icon
+│   ├── favicon.ico            # Site favicon (16x16, 32x32)
+│   ├── apple-touch-icon-180x180.png  # iOS app icon
+│   ├── android-chrome-192x192.png    # PWA icon (Android)
+│   ├── android-chrome-512x512.png    # PWA splash screen
+│   ├── favicon-*.png          # Additional favicon sizes
+│   └── og-image.png           # Open Graph image (1200x630)
 │
 ├── server/
 │   ├── api/

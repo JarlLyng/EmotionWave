@@ -96,12 +96,25 @@ modules: ['@nuxtjs/tailwindcss']
 ### News Sources
 - **Primary**: GDELT API (always used)
 - **Secondary**: NewsAPI (optional, requires API key)
+  - Uses HuggingFace Inference API for sentiment analysis (if API key provided)
+  - Falls back to keyword-based sentiment if HuggingFace unavailable
 - **Social**: Reddit (optional, lower weight)
-- **Languages**: Danish and English news
+- **Languages**: English and Danish news (separate API calls for NewsAPI)
 - **Query**: Focused on politics, technology, society (excludes sports/entertainment)
 - **Time Range**: Last 24 hours
 - **Max Articles**: 30 articles per source
 - **Aggregation**: Weighted average across all available sources
+
+### Sentiment Analysis Methods
+- **GDELT API**: Uses built-in sentiment/tone fields when available
+- **HuggingFace**: Advanced ML-based sentiment analysis (optional, requires API key)
+  - Model: cardiffnlp/twitter-roberta-base-sentiment-latest
+  - Falls back to keyword-based if API unavailable
+- **Keyword-based**: Enhanced keyword analysis with weighted scoring
+  - Expanded keyword lists with positive/negative words
+  - Weighted scoring (strong words get higher weight)
+  - Multiple occurrence counting
+  - Text length normalization
 
 ### Sentiment Score Range
 - **Range**: -1 (negative) to +1 (positive)
@@ -146,7 +159,8 @@ modules: ['@nuxtjs/tailwindcss']
 ### Manifest
 - Generated dynamically via `server/routes/manifest.json.ts`
 - Uses `NUXT_PUBLIC_BASE_URL` for correct paths
-- Icons: favicon.ico, apple-touch-icon.png
+- Icons: favicon.ico, apple-touch-icon-180x180.png, android-chrome-192x192.png, android-chrome-512x512.png
+- See [FAVICON_GUIDE.md](./FAVICON_GUIDE.md) for complete favicon setup
 
 ### Service Worker
 - File: `public/sw.js`
@@ -175,9 +189,40 @@ modules: ['@nuxtjs/tailwindcss']
 - Responsive breakpoints
 - Dark mode support (if needed)
 
+## SEO Configuration
+
+### Meta Tags
+- Configured in `nuxt.config.ts` under `app.head`
+- Includes: title, description, keywords, author
+- Open Graph tags for social sharing
+- Twitter Card tags
+- Canonical URLs
+
+### Structured Data
+- JSON-LD schema.org markup in `pages/index.vue`
+- WebApplication schema with features and creator info
+- Helps search engines understand the application
+
+### SEO Files
+- **sitemap.xml**: Generated dynamically via `server/routes/sitemap.xml.ts`
+- **robots.txt**: Generated dynamically via `server/routes/robots.txt.ts`
+- Both use `NUXT_PUBLIC_SITE_URL` for correct domain
+
+### Favicons
+- See [FAVICON_GUIDE.md](./FAVICON_GUIDE.md) for complete setup
+- Required: favicon.ico, apple-touch-icon-180x180.png, android-chrome-192x192.png, android-chrome-512x512.png
+
 ## Build Configuration
 
-### Production Build
+### Production Build (Vercel/Serverless)
+```bash
+npm run build
+```
+- Builds for SSR/serverless
+- Output: `.output`
+- Enables server API routes
+
+### Static Build (GitHub Pages)
 ```bash
 npm run generate
 ```

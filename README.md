@@ -41,6 +41,8 @@ Create a data-driven artwork where the website changes in real-time based on glo
 
 ### Sentiment Analysis
 - **Multi-source aggregation**: Combines data from GDELT API, NewsAPI (optional), and Reddit
+- **Advanced analysis**: Optional HuggingFace Inference API integration for improved sentiment detection
+- **Keyword-based fallback**: Enhanced keyword analysis when APIs don't provide explicit sentiment scores
 - Real-time analysis of news articles from multiple sources
 - Weighted average sentiment across all sources for better accuracy
 - Retry logic with exponential backoff for reliable data fetching
@@ -55,6 +57,13 @@ Create a data-driven artwork where the website changes in real-time based on glo
 - Installable on mobile devices
 - Fullscreen experience
 - Optimized for mobile performance
+
+### SEO & Social Sharing
+- Comprehensive meta tags (Open Graph, Twitter Cards)
+- Structured data (JSON-LD) for rich snippets
+- Dynamic sitemap.xml and robots.txt generation
+- Canonical URLs for proper indexing
+- Optimized favicon set for all platforms
 
 ## 📊 Sentiment Visualization Mapping
 
@@ -110,6 +119,7 @@ The application will be available at `http://localhost:3000`
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical architecture and component structure
 - **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Deployment guides for various platforms
 - **[CONFIGURATION.md](./CONFIGURATION.md)** - Configuration options and environment variables
+- **[FAVICON_GUIDE.md](./FAVICON_GUIDE.md)** - Favicon setup and requirements
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Guidelines for contributing
 
 ## 🐛 Known Issues & Limitations
