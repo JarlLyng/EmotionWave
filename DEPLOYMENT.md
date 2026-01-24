@@ -39,42 +39,6 @@ Vercel supports serverless functions, enabling full API functionality.
 - ✅ Preview deployments for PRs
 - ✅ Analytics and monitoring
 
-## Netlify Deployment
-
-Similar to Vercel, Netlify supports serverless functions.
-
-### Setup
-
-1. **Connect Repository**:
-   - Import project from GitHub
-   - Netlify auto-detects Nuxt 3
-
-2. **Build Settings**:
-   - Build command: `npm run build` (not `generate` - we need serverless functions)
-   - Publish directory: `.output` (not `.output/public`)
-   - Install command: `npm ci`
-   - Framework Preset: Nuxt.js (auto-detected)
-
-3. **Environment Variables**:
-   ```
-   HUGGINGFACE_API_KEY=your_api_key
-   NEWS_API_KEY=your_api_key
-   NUXT_PUBLIC_SITE_URL=https://your-app.netlify.app
-   NUXT_PUBLIC_BASE_URL=/
-   ```
-
-4. **Netlify Functions** (for API routes):
-   - Server API routes automatically work as Netlify Functions
-   - No additional configuration needed
-
-### Advantages
-
-- ✅ Server-side API routes work
-- ✅ Automatic HTTPS
-- ✅ Form handling
-- ✅ Split testing
-- ✅ Edge functions support
-
 ## Self-Hosted Deployment
 
 For full control over infrastructure.
@@ -142,7 +106,7 @@ See [CONFIGURATION.md](./CONFIGURATION.md) for detailed environment variable doc
 
 ### API Not Working
 
-- **Vercel/Netlify**: Verify serverless functions are enabled and environment variables are set
+- **Vercel**: Verify serverless functions are enabled and environment variables are set
 - **Self-hosted**: Ensure Node.js server is running for SSR
 
 ## Performance Optimization

@@ -36,8 +36,8 @@ NUXT_PUBLIC_BASE_URL=/
   - If you get 401/403 errors, your token likely doesn't have the right permissions
 
 **Production**:
-- **GitHub Pages**: Set as repository secrets in GitHub Settings
-- **Vercel/Netlify**: Set in platform dashboard
+- **GitHub Pages**: Set as repository secrets in GitHub Settings (static hosting only)
+- **Vercel**: Set in Vercel dashboard (recommended for full functionality)
 - **Self-hosted**: Set in environment or `.env` file
 
 ⚠️ **Security Note**: Never commit `.env` files to git. If your API key has been exposed, rotate it immediately.
