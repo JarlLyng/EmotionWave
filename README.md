@@ -119,7 +119,6 @@ The application will be available at `http://localhost:3000`
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical architecture and component structure
 - **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Deployment guides for various platforms
 - **[CONFIGURATION.md](./CONFIGURATION.md)** - Configuration options and environment variables
-- **[FAVICON_GUIDE.md](./FAVICON_GUIDE.md)** - Favicon setup and requirements
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Guidelines for contributing
 
 ## 🐛 Known Issues & Limitations

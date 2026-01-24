@@ -160,7 +160,6 @@ modules: ['@nuxtjs/tailwindcss']
 - Generated dynamically via `server/routes/manifest.json.ts`
 - Uses `NUXT_PUBLIC_BASE_URL` for correct paths
 - Icons: favicon.ico, apple-touch-icon-180x180.png, android-chrome-192x192.png, android-chrome-512x512.png
-- See [FAVICON_GUIDE.md](./FAVICON_GUIDE.md) for complete favicon setup
 
 ### Service Worker
 - File: `public/sw.js`
@@ -209,8 +208,8 @@ modules: ['@nuxtjs/tailwindcss']
 - Both use `NUXT_PUBLIC_SITE_URL` for correct domain
 
 ### Favicons
-- See [FAVICON_GUIDE.md](./FAVICON_GUIDE.md) for complete setup
 - Required: favicon.ico, apple-touch-icon-180x180.png, android-chrome-192x192.png, android-chrome-512x512.png
+- All favicon files are located in `/public/` directory
 
 ## Build Configuration
 
