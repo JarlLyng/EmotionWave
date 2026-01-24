@@ -25,10 +25,10 @@ export default defineNuxtConfig({
     }
   },
   app: {
-    // Use environment variable, default to / for production (Vercel) or /EmotionWave/ for GitHub Pages
-    // GitHub Pages workflow sets NUXT_PUBLIC_BASE_URL=/EmotionWave/
-    // Vercel should set NUXT_PUBLIC_BASE_URL=/
-    baseURL: process.env.NUXT_PUBLIC_BASE_URL || (process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/'),
+    // Use environment variable, default to / for production (Vercel is primary deployment)
+    // Vercel should set NUXT_PUBLIC_BASE_URL=/ in environment variables
+    // For GitHub Pages (if needed), set NUXT_PUBLIC_BASE_URL=/EmotionWave/
+    baseURL: process.env.NUXT_PUBLIC_BASE_URL || '/',
     buildAssetsDir: '_nuxt/',
     head: {
       title: 'EmotionWave - A Living Website That Reacts to the World\'s Mood',

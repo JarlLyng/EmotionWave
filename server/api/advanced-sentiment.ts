@@ -470,20 +470,29 @@ async function fetchNewsAPINews(): Promise<Article[]> {
       })
       
       // Analyze sentiment for each article
+      // Note: HuggingFace calls are sequential per article to avoid rate limits
+      // For production, consider disabling HuggingFace or using keyword-based only
+      // if response times are too long
       for (const article of articles) {
         const text = `${article.title || ''} ${article.description || ''}`.trim()
         if (!text) continue
         
         let sentiment = 0
         
-        // Try HuggingFace first if API key is available
-        // Note: HuggingFace API endpoints have changed, so we primarily use keyword-based
-        // HuggingFace integration is kept for future use when API stabilizes
+        // Use keyword-based sentiment as primary method (faster, more reliable)
+        // HuggingFace can be enabled via API key but may cause timeouts with many articles
         if (config.huggingFaceKey) {
           try {
-            sentiment = await analyzeSentimentWithHuggingFace(text, config.huggingFaceKey)
+            // Add timeout to prevent hanging on slow HuggingFace responses
+            const timeoutPromise = new Promise<number>((_, reject) => 
+              setTimeout(() => reject(new Error('HuggingFace timeout')), 3000)
+            )
+            sentiment = await Promise.race([
+              analyzeSentimentWithHuggingFace(text, config.huggingFaceKey),
+              timeoutPromise
+            ])
           } catch (error) {
-            // Fallback to keyword-based if HuggingFace fails (expected for now)
+            // Fallback to keyword-based if HuggingFace fails or times out
             sentiment = keywordBasedSentiment(text)
           }
         } else {
