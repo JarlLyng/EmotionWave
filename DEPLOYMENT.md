@@ -2,46 +2,9 @@
 
 This guide covers deployment options and configurations for EmotionWave.
 
-## GitHub Pages (Current)
+## Vercel Deployment (Current)
 
-This project is currently deployed on GitHub Pages and available at [https://jarllyng.github.io/EmotionWave/](https://jarllyng.github.io/EmotionWave/)
-
-### Automatic Deployment
-
-- GitHub Actions workflow automatically builds and deploys on every push to `main` or `master`
-- Configured in `.github/workflows/deploy.yml`
-- Uses official GitHub Pages deployment action
-
-### Setup Requirements
-
-1. Go to repository **Settings** → **Pages**
-2. Set **Source** to "GitHub Actions"
-3. Configure repository secrets (all optional):
-   - `HUGGINGFACE_API_KEY` (optional, for future advanced sentiment analysis)
-   - `NEWS_API_KEY` (optional, improves accuracy with additional news sources)
-   - `NUXT_PUBLIC_SITE_URL` (optional, defaults to GitHub Pages URL)
-   - `NUXT_PUBLIC_BASE_URL` (optional, defaults to `/EmotionWave/`)
-
-### Configuration
-
-The workflow uses these environment variables:
-- `NUXT_PUBLIC_SITE_URL`: Public URL of the site (defaults to GitHub Pages URL)
-- `NUXT_PUBLIC_BASE_URL`: Base URL path (`/EmotionWave/` for GitHub Pages)
-
-### Known Limitations
-
-- **Static Hosting**: GitHub Pages is static hosting, so server-side API routes (`/api/*`) are not available
-- **Fallback Data**: The application uses fallback data when API is unavailable
-- **Full Functionality**: For full API functionality, deploy to a platform supporting serverless functions (Vercel, Netlify, etc.)
-
-### Build Process
-
-1. Install dependencies: `npm ci`
-2. Build static site: `npm run generate`
-3. Output directory: `.output/public`
-4. Deploy: GitHub Actions uploads to GitHub Pages
-
-## Vercel Deployment
+This project is currently deployed on Vercel at [https://emotionwave.iamjarl.com](https://emotionwave.iamjarl.com)
 
 Vercel supports serverless functions, enabling full API functionality.
 
@@ -176,8 +139,7 @@ See [CONFIGURATION.md](./CONFIGURATION.md) for detailed environment variable doc
 
 ### API Not Working
 
-- **GitHub Pages**: API routes don't work (static hosting limitation)
-- **Vercel/Netlify**: Verify serverless functions are enabled
+- **Vercel/Netlify**: Verify serverless functions are enabled and environment variables are set
 - **Self-hosted**: Ensure Node.js server is running for SSR
 
 ## Performance Optimization

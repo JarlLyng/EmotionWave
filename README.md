@@ -114,10 +114,10 @@ The application will be available at `http://localhost:3000`
 
 ## 🐛 Known Issues & Limitations
 
-1. **API Availability on GitHub Pages**
-   - Server-side API routes don't work on static hosting
-   - Application uses fallback data automatically
-   - For full functionality, deploy to Vercel/Netlify
+1. **Static Hosting Limitations**
+   - Server-side API routes don't work on static hosting (GitHub Pages, etc.)
+   - Application uses fallback data automatically on static hosting
+   - For full functionality with HuggingFace sentiment analysis, deploy to Vercel/Netlify
 
 2. **Audio Autoplay**
    - Browser policies require user interaction to start audio
