@@ -98,9 +98,18 @@ export default defineNuxtConfig({
         const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/'
         
         return [
-          { rel: 'icon', type: 'image/x-icon', href: joinURL('favicon.ico') },
-          { rel: 'apple-touch-icon', href: joinURL('apple-touch-icon.png') },
+          // Standard favicon (ICO format - contains 16x16 and 32x32)
+          { rel: 'icon', type: 'image/x-icon', href: joinURL('favicon.ico'), sizes: '32x32' },
+          // Modern browsers - SVG favicon (optional but recommended)
+          // { rel: 'icon', type: 'image/svg+xml', href: joinURL('icon.svg') },
+          // Apple Touch Icon (iOS home screen)
+          { rel: 'apple-touch-icon', href: joinURL('apple-touch-icon.png'), sizes: '180x180' },
+          // PWA icons
+          { rel: 'icon', type: 'image/png', href: joinURL('icon-192.png'), sizes: '192x192' },
+          { rel: 'icon', type: 'image/png', href: joinURL('icon-512.png'), sizes: '512x512' },
+          // Manifest
           { rel: 'manifest', href: joinURL('manifest.json') },
+          // Canonical URL
           { rel: 'canonical', href: siteUrl }
         ]
       })(),

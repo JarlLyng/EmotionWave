@@ -45,8 +45,20 @@ export default defineEventHandler((event) => {
       },
       {
         src: buildAbsoluteURL('apple-touch-icon.png'),
-        sizes: '32x32',
+        sizes: '180x180',
         type: 'image/png'
+      },
+      {
+        src: buildAbsoluteURL('icon-192.png'),
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any maskable'
+      },
+      {
+        src: buildAbsoluteURL('icon-512.png'),
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any maskable'
       }
     ],
     categories: ['entertainment', 'art', 'music'],
