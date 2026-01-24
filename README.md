@@ -2,7 +2,7 @@
 
 A living Nuxt-based website that reacts to the world's mood. Through real-time sentiment analysis of news and social media, the site's visual expression — colors, animations, and atmosphere — changes automatically.
 
-🌐 **Live Site**: [https://emotionwave.iamjarl.com](https://emotionwave.iamjarl.com) (Vercel) | [GitHub Pages](https://jarllyng.github.io/EmotionWave/)
+🌐 **Live Site**: [https://emotionwave.iamjarl.com](https://emotionwave.iamjarl.com) (Vercel)
 
 ## 🎯 Project Purpose
 
@@ -10,9 +10,9 @@ Create a data-driven artwork where the website changes in real-time based on glo
 
 ## 🛠️ Technologies
 
-- **Framework**: Nuxt 3.20.2 + Vite
-- **UI**: TailwindCSS 4.1.17
-- **Visuals**: Three.js 0.181.2 for particle effects (lazy loaded)
+- **Framework**: Nuxt 3.21.0 + Vite
+- **UI**: TailwindCSS 4.1.18
+- **Visuals**: Three.js 0.182.0 for particle effects (lazy loaded)
 - **Audio**: Tone.js 15.1.22 for generative ambient sound (lazy loaded)
 - **Data**: Multi-source sentiment analysis (GDELT API, NewsAPI, Reddit)
 - **PWA**: Service Worker for offline functionality

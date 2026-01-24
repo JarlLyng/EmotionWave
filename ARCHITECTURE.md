@@ -175,10 +175,6 @@ This document describes the technical architecture and component structure of Em
 ```
 EmotionWave/
 │
-├── .github/
-│   └── workflows/
-│       └── deploy.yml          # GitHub Actions CI/CD workflow
-│
 ├── .cursor/
 │   └── rules/                  # Cursor AI rules
 │
@@ -226,11 +222,11 @@ EmotionWave/
 
 ## Technology Stack
 
-- **Framework**: Nuxt 3.20.2 + Vite
-- **UI**: TailwindCSS 4.1.17
-- **Visuals**: Three.js 0.181.2 (lazy loaded)
+- **Framework**: Nuxt 3.21.0 + Vite
+- **UI**: TailwindCSS 4.1.18
+- **Visuals**: Three.js 0.182.0 (lazy loaded)
 - **Audio**: Tone.js 15.1.22 (lazy loaded)
-- **Data**: GDELT API for news sentiment
+- **Data**: Multi-source sentiment analysis (GDELT API, NewsAPI, Reddit)
 - **PWA**: Service Worker for offline functionality
 - **TypeScript**: Full type safety throughout
 

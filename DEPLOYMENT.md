@@ -95,7 +95,7 @@ See [CONFIGURATION.md](./CONFIGURATION.md) for detailed environment variable doc
 - Check Node.js version (requires 20.x+)
 - Verify all dependencies installed: `npm ci`
 - Check for TypeScript errors: `npm run build`
-- Review GitHub Actions logs
+- Review Vercel deployment logs
 
 ### Deployment Issues
 
