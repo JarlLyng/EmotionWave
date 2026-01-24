@@ -67,9 +67,16 @@ const getMeterColor = computed(() => {
   border-radius: 1.5rem;
   backdrop-filter: blur(10px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  pointer-events: none;
   user-select: none;
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.meter-container,
+.meter-track,
+.meter-fill,
+.meter-labels,
+.fallback-badge {
+  pointer-events: none;
 }
 
 .meter-container {
@@ -108,6 +115,7 @@ const getMeterColor = computed(() => {
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.875rem;
+  pointer-events: auto;
 }
 
 .retry-button:hover {

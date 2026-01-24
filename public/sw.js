@@ -14,7 +14,7 @@ const staticUrlsToCache = [
   `${basePath}/`,
   `${basePath}/favicon.ico`,
   `${basePath}/manifest.json`,
-  `${basePath}/apple-touch-icon.png`
+  `${basePath}/apple-touch-icon-180x180.png`
 ]
 
 // Install event - cache static assets and precache _nuxt assets

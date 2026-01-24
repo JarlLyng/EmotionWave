@@ -10,25 +10,25 @@ For optimal compatibility across all platforms, you need the following favicon f
 - **Use**: Browser tabs, bookmarks, Windows taskbar
 - **Location**: `/public/favicon.ico`
 
-### 2. **apple-touch-icon.png** (iOS)
+### 2. **apple-touch-icon-180x180.png** (iOS)
 - **Size**: 180×180 pixels
 - **Format**: PNG
 - **Use**: iOS home screen when users add to home screen
-- **Location**: `/public/apple-touch-icon.png`
+- **Location**: `/public/apple-touch-icon-180x180.png`
 - **Note**: iOS automatically adds rounded corners and shadow
 
-### 3. **icon-192.png** (PWA - Android)
+### 3. **android-chrome-192x192.png** (PWA - Android)
 - **Size**: 192×192 pixels
 - **Format**: PNG
 - **Use**: Android Chrome home screen, PWA installation
-- **Location**: `/public/icon-192.png`
+- **Location**: `/public/android-chrome-192x192.png`
 - **Purpose**: `any maskable` (Android can crop safely)
 
-### 4. **icon-512.png** (PWA - Splash Screen)
+### 4. **android-chrome-512x512.png** (PWA - Splash Screen)
 - **Size**: 512×512 pixels
 - **Format**: PNG
 - **Use**: PWA splash screens, Google Search results
-- **Location**: `/public/icon-512.png`
+- **Location**: `/public/android-chrome-512x512.png`
 - **Purpose**: `any maskable` (Android can crop safely)
 
 ## Optional (Recommended)
@@ -58,10 +58,10 @@ For optimal compatibility across all platforms, you need the following favicon f
 
 ## Current Status
 
-✅ **favicon.ico** - Exists (needs to be 16×16, 32×32 ICO format)
-✅ **apple-touch-icon.png** - Exists (should be 180×180)
-❌ **icon-192.png** - Missing (create 192×192 PNG)
-❌ **icon-512.png** - Missing (create 512×512 PNG)
+✅ **favicon.ico** - Exists (16×16, 32×32 ICO format)
+✅ **apple-touch-icon-180x180.png** - Exists (180×180)
+✅ **android-chrome-192x192.png** - Exists (192×192)
+✅ **android-chrome-512x512.png** - Exists (512×512)
 ❌ **icon.svg** - Optional (not configured)
 
 ## Quick Start

@@ -141,10 +141,12 @@ const animate = (): void => {
   const positions = particles.geometry.attributes.position.array as Float32Array
   const speed = Math.abs(props.sentimentScore ?? 0) * 0.1
   
+  // Calculate time once outside the loop for better performance
+  const time = Date.now() * 0.001
+  
   // Batch opdateringer for bedre performance
   for (let i = 0; i < positions.length; i += 3) {
     // Tilføj bølge-effekt baseret på sentiment
-    const time = Date.now() * 0.001
     positions[i] += Math.sin(time + i * 0.1) * speed
     positions[i + 1] += Math.cos(time + i * 0.1) * speed
     

@@ -52,9 +52,9 @@ export default defineNuxtConfig({
         { property: 'og:url', content: process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/' },
         { property: 'og:image', content: (() => {
           const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/'
-          const baseURL = process.env.NUXT_PUBLIC_BASE_URL || '/'
-          const imagePath = baseURL.endsWith('/') ? `${baseURL}og-image.png` : `${baseURL}/og-image.png`
-          return siteUrl.endsWith('/') ? `${siteUrl}${imagePath.replace(/^\//, '')}` : `${siteUrl}${imagePath}`
+          // Remove trailing slash and ensure single path separator
+          const cleanSiteUrl = siteUrl.replace(/\/$/, '')
+          return `${cleanSiteUrl}/og-image.png`
         })() },
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },
@@ -67,9 +67,9 @@ export default defineNuxtConfig({
         { name: 'twitter:description', content: 'An interactive web experience that visualizes global sentiment in real-time through dynamic visuals and ambient sound.' },
         { name: 'twitter:image', content: (() => {
           const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/'
-          const baseURL = process.env.NUXT_PUBLIC_BASE_URL || '/'
-          const imagePath = baseURL.endsWith('/') ? `${baseURL}og-image.png` : `${baseURL}/og-image.png`
-          return siteUrl.endsWith('/') ? `${siteUrl}${imagePath.replace(/^\//, '')}` : `${siteUrl}${imagePath}`
+          // Remove trailing slash and ensure single path separator
+          const cleanSiteUrl = siteUrl.replace(/\/$/, '')
+          return `${cleanSiteUrl}/og-image.png`
         })() },
         { name: 'twitter:image:alt', content: 'EmotionWave - Real-time global sentiment visualization' }
       ],

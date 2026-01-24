@@ -50,12 +50,15 @@ Similar to Vercel, Netlify supports serverless functions.
    - Netlify auto-detects Nuxt 3
 
 2. **Build Settings**:
-   - Build command: `npm run generate`
-   - Publish directory: `.output/public`
+   - Build command: `npm run build` (not `generate` - we need serverless functions)
+   - Publish directory: `.output` (not `.output/public`)
+   - Install command: `npm ci`
+   - Framework Preset: Nuxt.js (auto-detected)
 
 3. **Environment Variables**:
    ```
    HUGGINGFACE_API_KEY=your_api_key
+   NEWS_API_KEY=your_api_key
    NUXT_PUBLIC_SITE_URL=https://your-app.netlify.app
    NUXT_PUBLIC_BASE_URL=/
    ```

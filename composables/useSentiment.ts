@@ -53,7 +53,14 @@ export function useSentiment() {
   /**
    * Fetches the latest sentiment data from the API
    */
+  let inFlight = false
+  
   async function fetchSentiment() {
+    // Prevent overlapping requests
+    if (inFlight) {
+      return
+    }
+    inFlight = true
     isLoading.value = true
     error.value = null
 
@@ -152,6 +159,7 @@ export function useSentiment() {
       }
     } finally {
       isLoading.value = false
+      inFlight = false
     }
   }
   

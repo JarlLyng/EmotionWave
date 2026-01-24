@@ -48,6 +48,7 @@ const volume = ref(0.5)
 const color = ref('#4F46E5') // Indigo-600
 let synth: any = null
 let reverb: any = null
+let delay: any = null
 let filter: any = null
 let toneModule: any = null
 let chordInterval: any = null
@@ -97,7 +98,7 @@ const initAudio = async () => {
     }).toDestination()
     
     // Tilføj delay
-    const delay = new Tone.FeedbackDelay({
+    delay = new Tone.FeedbackDelay({
       delayTime: '4n',
       feedback: 0.4,
       wet: 0.3
@@ -199,7 +200,8 @@ const toggleSound = async () => {
     }
     
     if (synth) {
-      synth.dispose()
+      if (synth) synth.dispose()
+      if (delay) delay.dispose()
       synth = null
     }
     if (reverb) {
@@ -266,6 +268,9 @@ onUnmounted(() => {
   }
   if (reverb) {
     reverb.dispose()
+  }
+  if (delay) {
+    delay.dispose()
   }
   if (filter) {
     filter.dispose()

@@ -17,6 +17,7 @@ node_modules
 # Logs
 logs
 *.log
+logs_result.json
 
 # Misc
 .DS_Store

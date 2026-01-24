@@ -32,6 +32,7 @@ interface SentimentSource {
   score: number
   articles: number
   weight: number
+  rawScore: number // Internal calculation value before normalization
 }
 
 interface SentimentData {
@@ -293,17 +294,39 @@ async function analyzeSentimentWithHuggingFace(text: string, apiKey: string): Pr
 
 /**
  * Parse HuggingFace sentiment response to GDELT scale (-10 to 10)
- * HuggingFace returns: [{label: 'POSITIVE', score: 0.9}, {label: 'NEGATIVE', score: 0.05}, {label: 'NEUTRAL', score: 0.05}]
+ * HuggingFace returns various formats:
+ * - [{label: 'POSITIVE', score: 0.9}, {label: 'NEGATIVE', score: 0.05}, {label: 'NEUTRAL', score: 0.05}]
+ * - [[{label: 'POSITIVE', score: 0.9}, ...]]
+ * - {label: 'POSITIVE', score: 0.9} (single object)
  */
 function parseHuggingFaceSentiment(data: any): number {
-  // Handle array response
-  const results = Array.isArray(data) ? data[0] : data
+  // Handle nested arrays: [[{...}]] -> [{...}]
+  let results = data
+  while (Array.isArray(results) && results.length > 0 && Array.isArray(results[0])) {
+    results = results[0]
+  }
   
-  // Handle nested array (sometimes API returns [[{...}]])
-  const sentiment = Array.isArray(results) ? results[0] : results
+  // If still an array, get first element
+  if (Array.isArray(results)) {
+    results = results[0]
+  }
   
-  if (!sentiment || !Array.isArray(sentiment)) {
+  // Now results should be an object or array of sentiment objects
+  let sentimentArray: Array<{label: string, score: number}> | null = null
+  
+  if (Array.isArray(results)) {
+    // Array of sentiment objects: [{label: 'POSITIVE', score: 0.9}, ...]
+    sentimentArray = results
+  } else if (results && typeof results === 'object' && 'label' in results) {
+    // Single sentiment object: {label: 'POSITIVE', score: 0.9}
+    sentimentArray = [results]
+  } else {
+    console.warn('Unexpected HuggingFace response format:', JSON.stringify(data).substring(0, 200))
     return 0 // Neutral if we can't parse
+  }
+  
+  if (!sentimentArray || sentimentArray.length === 0) {
+    return 0 // Neutral if empty
   }
 
   // Find the highest scoring label
@@ -311,7 +334,7 @@ function parseHuggingFaceSentiment(data: any): number {
   let negativeScore = 0
   let neutralScore = 0
 
-  sentiment.forEach((item: any) => {
+  sentimentArray.forEach((item: any) => {
     const label = item.label?.toUpperCase() || ''
     const score = item.score || 0
     
