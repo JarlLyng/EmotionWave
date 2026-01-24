@@ -103,10 +103,10 @@ export default defineNuxtConfig({
           // Modern browsers - SVG favicon (optional but recommended)
           // { rel: 'icon', type: 'image/svg+xml', href: joinURL('icon.svg') },
           // Apple Touch Icon (iOS home screen)
-          { rel: 'apple-touch-icon', href: joinURL('apple-touch-icon.png'), sizes: '180x180' },
-          // PWA icons
-          { rel: 'icon', type: 'image/png', href: joinURL('icon-192.png'), sizes: '192x192' },
-          { rel: 'icon', type: 'image/png', href: joinURL('icon-512.png'), sizes: '512x512' },
+          { rel: 'apple-touch-icon', href: joinURL('apple-touch-icon-180x180.png'), sizes: '180x180' },
+          // PWA icons (Android Chrome)
+          { rel: 'icon', type: 'image/png', href: joinURL('android-chrome-192x192.png'), sizes: '192x192' },
+          { rel: 'icon', type: 'image/png', href: joinURL('android-chrome-512x512.png'), sizes: '512x512' },
           // Manifest
           { rel: 'manifest', href: joinURL('manifest.json') },
           // Canonical URL

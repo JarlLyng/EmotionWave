@@ -44,18 +44,18 @@ export default defineEventHandler((event) => {
         type: 'image/x-icon'
       },
       {
-        src: buildAbsoluteURL('apple-touch-icon.png'),
+        src: buildAbsoluteURL('apple-touch-icon-180x180.png'),
         sizes: '180x180',
         type: 'image/png'
       },
       {
-        src: buildAbsoluteURL('icon-192.png'),
+        src: buildAbsoluteURL('android-chrome-192x192.png'),
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any maskable'
       },
       {
-        src: buildAbsoluteURL('icon-512.png'),
+        src: buildAbsoluteURL('android-chrome-512x512.png'),
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any maskable'
