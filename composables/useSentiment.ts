@@ -66,6 +66,7 @@ export function useSentiment() {
       const baseUrlObj = new URL(baseURL, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
       const apiUrl = new URL('api/advanced-sentiment', baseUrlObj).toString()
       
+      console.log('Fetching sentiment from API:', apiUrl)
       isUsingFallback.value = false
       
       const response = await fetch(apiUrl)
@@ -75,7 +76,12 @@ export function useSentiment() {
       }
       const data = await response.json()
       
-      console.log('Fetched sentiment data:', data)
+      console.log('Fetched sentiment data from server API:', {
+        score: data.score,
+        sources: data.sources?.length || 0,
+        apiSources: data.apiSources || [],
+        timestamp: data.timestamp
+      })
       
       targetScore.value = data.score
       

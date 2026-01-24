@@ -504,9 +504,11 @@ async function aggregateSentiment(): Promise<SentimentData> {
   
   // If no articles, return fallback
   if (allArticles.length === 0) {
-    console.log('No articles from any source, using fallback')
+    console.warn('No articles from any source, using fallback')
     return getDynamicFallbackData()
   }
+  
+  console.log(`Aggregating ${allArticles.length} articles from sources: ${apiSources.join(', ')}`)
   
   // Group articles by source
   const sourceGroups = allArticles.reduce((acc, article) => {
@@ -546,7 +548,9 @@ async function aggregateSentiment(): Promise<SentimentData> {
     score: normalizeSentiment(rawScore)
   }))
   
-  console.log(`Aggregated sentiment: ${averageSentiment.toFixed(2)} from ${apiSources.join(', ')} (${allArticles.length} total articles, ${sources.length} sources)`)
+  console.log(`Aggregated sentiment: ${averageSentiment.toFixed(3)} from ${apiSources.join(', ')} (${allArticles.length} total articles, ${sources.length} sources)`)
+  console.log('Raw weighted average before normalization:', rawWeightedAverage.toFixed(3))
+  console.log('Source breakdown:', sourcesForResponse.map(s => `${s.name}: ${s.score.toFixed(3)} (${s.articles} articles)`).join(', '))
   
   return {
     score: averageSentiment,
@@ -588,16 +592,29 @@ function getDynamicFallbackData(): SentimentData {
 export default defineEventHandler(async (event) => {
   // Check cache
   if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
-    console.log('Returning cached sentiment data')
+    console.log('Returning cached sentiment data:', {
+      score: cachedData.score,
+      sources: cachedData.sources.length,
+      apiSources: cachedData.apiSources
+    })
     return cachedData
   }
 
   try {
+    console.log('Starting sentiment aggregation from multiple sources...')
     // Aggregate from multiple sources
     cachedData = await aggregateSentiment()
+    console.log('Sentiment aggregation completed:', {
+      score: cachedData.score,
+      sources: cachedData.sources.length,
+      apiSources: cachedData.apiSources,
+      totalArticles: cachedData.sources.reduce((sum, s) => sum + s.articles, 0)
+    })
     return cachedData
   } catch (error) {
     console.error('Error aggregating sentiment data:', error)
-    return getDynamicFallbackData()
+    const fallback = getDynamicFallbackData()
+    console.log('Returning fallback data:', { score: fallback.score })
+    return fallback
   }
 })
