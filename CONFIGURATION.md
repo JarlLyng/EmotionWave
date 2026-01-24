@@ -6,7 +6,8 @@ This document describes all configuration options for EmotionWave.
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `HUGGINGFACE_API_KEY` | HuggingFace API key for sentiment analysis | No (not currently used) | - |
+| `HUGGINGFACE_API_KEY` | HuggingFace API key for advanced sentiment analysis | No (optional, for future use) | - |
+| `NEWS_API_KEY` | NewsAPI key for additional news sources | No (optional, improves accuracy) | - |
 | `NUXT_PUBLIC_SITE_URL` | Public URL of the site | No | `http://localhost:3000` |
 | `NUXT_PUBLIC_BASE_URL` | Base URL path (e.g., `/EmotionWave/` for GitHub Pages) | No | `/` (dev) or `/EmotionWave/` (prod) |
 
@@ -16,9 +17,14 @@ This document describes all configuration options for EmotionWave.
 Create a `.env` file in the project root:
 ```env
 HUGGINGFACE_API_KEY=your_api_key_here
+NEWS_API_KEY=your_api_key_here
 NUXT_PUBLIC_SITE_URL=http://localhost:3000
 NUXT_PUBLIC_BASE_URL=/
 ```
+
+**Getting API Keys**:
+- **NewsAPI**: Get a free API key at https://newsapi.org/register (100 requests/day free tier)
+- **HuggingFace**: Get an API key at https://huggingface.co/settings/tokens (optional, for future use)
 
 **Production**:
 - **GitHub Pages**: Set as repository secrets in GitHub Settings
@@ -79,11 +85,14 @@ modules: ['@nuxtjs/tailwindcss']
 - Configured in `server/api/advanced-sentiment.ts`
 
 ### News Sources
-- **Primary**: GDELT API
+- **Primary**: GDELT API (always used)
+- **Secondary**: NewsAPI (optional, requires API key)
+- **Social**: Reddit (optional, lower weight)
 - **Languages**: Danish and English news
 - **Query**: Focused on politics, technology, society (excludes sports/entertainment)
 - **Time Range**: Last 24 hours
-- **Max Articles**: 30 articles per request
+- **Max Articles**: 30 articles per source
+- **Aggregation**: Weighted average across all available sources
 
 ### Sentiment Score Range
 - **Range**: -1 (negative) to +1 (positive)

@@ -78,19 +78,24 @@ This document describes the technical architecture and component structure of Em
 ### Server API Routes (`server/api/`)
 
 #### advanced-sentiment.ts
-- **Purpose**: Main sentiment analysis endpoint
+- **Purpose**: Multi-source sentiment analysis endpoint
 - **Responsibilities**:
-  - Fetches news articles from GDELT API
-  - Analyzes sentiment from multiple sources
-  - Calculates weighted average sentiment
+  - Aggregates sentiment from multiple news sources:
+    - **GDELT API**: Primary source for global news sentiment
+    - **NewsAPI**: Additional news sources (optional, requires API key)
+    - **Reddit**: Social media sentiment (optional, lower weight)
+  - Calculates weighted average sentiment across all sources
   - Handles caching (30 seconds)
-  - Provides fallback data
+  - Provides fallback data when APIs unavailable
 - **Key Features**:
-  - Dynamic date range (last 24 hours)
-  - Focused query terms (politics, technology, society)
-  - Normalized sentiment scores (-1 to 1)
-  - Weighted average based on article count
-  - Error handling and logging
+  - **Multi-source aggregation**: Combines data from multiple APIs for better accuracy
+  - **Retry logic**: Exponential backoff for failed API calls (3 retries)
+  - **Dynamic date range**: Last 24 hours of news
+  - **Focused queries**: Filters out noise (sports, entertainment, etc.)
+  - **Normalized scores**: All sentiment values normalized to [-1, 1]
+  - **Weighted averages**: Articles weighted by source and count
+  - **Graceful degradation**: Works even if some APIs fail
+  - **Error handling**: Comprehensive error handling and logging
 
 #### Server Routes (`server/routes/`)
 - **manifest.json.ts**: Dynamic PWA manifest generation
@@ -165,9 +170,7 @@ EmotionWave/
 │
 ├── server/
 │   ├── api/
-│   │   ├── advanced-sentiment.ts  # Main sentiment analysis endpoint
-│   │   ├── sentiment.ts           # Alternative sentiment endpoint
-│   │   └── reddit-sentiment.ts    # Reddit-based sentiment (unused)
+│   │   └── advanced-sentiment.ts  # Multi-source sentiment analysis endpoint
 │   └── routes/
 │       ├── manifest.json.ts   # Dynamic manifest generation
 │       ├── robots.txt.ts       # Dynamic robots.txt generation

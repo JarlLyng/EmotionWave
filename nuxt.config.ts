@@ -10,6 +10,10 @@ export default defineNuxtConfig({
     },
   },
   runtimeConfig: {
+    // Private keys (server-side only)
+    newsApiKey: process.env.NEWS_API_KEY,
+    huggingFaceKey: process.env.HUGGINGFACE_API_KEY,
+    // Public config (accessible on client)
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
     }
@@ -36,6 +40,7 @@ export default defineNuxtConfig({
         { property: 'og:title', content: 'EmotionWave' },
         { property: 'og:description', content: 'A living website that reacts to the world\'s mood' },
         { property: 'og:type', content: 'website' },
+        { property: 'og:url', content: process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/' },
         // og:image removed - file doesn't exist, can be added later
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:title', content: 'EmotionWave' },
@@ -43,8 +48,21 @@ export default defineNuxtConfig({
       ],
       link: (() => {
         // Generate links directly in config for SSR output
+        // This ensures they're present in static HTML for SEO
         const baseURL = process.env.NUXT_PUBLIC_BASE_URL || (process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/')
         const joinURL = (path: string) => {
+          // Handle both relative and absolute baseURLs
+          if (baseURL.startsWith('http://') || baseURL.startsWith('https://')) {
+            try {
+              return new URL(path, baseURL).toString()
+            } catch {
+              // Fallback if URL constructor fails
+              const base = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL
+              const p = path.startsWith('/') ? path : `/${path}`
+              return `${base}${p}`
+            }
+          }
+          // Relative path
           const base = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL
           const p = path.startsWith('/') ? path : `/${path}`
           return `${base}${p}`

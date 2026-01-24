@@ -42,15 +42,28 @@ self.addEventListener('install', (event) => {
               const nuxtAssetRegex = /(?:href|src)=["']([^"']*\/_nuxt\/[^"']+\.(js|css))["']/gi
               const matches = [...new Set(Array.from(html.matchAll(nuxtAssetRegex), m => m[1]))]
               
-              // Normalize paths - ensure they're absolute
+              // Normalize paths - ensure they're absolute URLs
               const nuxtUrls = matches.map(path => {
-                // If path starts with /, it's already absolute
-                if (path.startsWith('/')) {
-                  return path
+                try {
+                  // If path is already absolute (starts with http or /), use it directly
+                  if (path.startsWith('http://') || path.startsWith('https://')) {
+                    return path
+                  }
+                  // If path starts with /, it's absolute from root
+                  if (path.startsWith('/')) {
+                    // For subdirectory deployments, we need to prepend basePath
+                    if (basePath && basePath !== '/') {
+                      return `${basePath}${path}`
+                    }
+                    return path
+                  }
+                  // Relative path - prepend basePath
+                  return `${basePath}/${path}`
+                } catch (error) {
+                  console.warn('Error normalizing path:', path, error)
+                  return null
                 }
-                // Otherwise, prepend basePath
-                return `${basePath}/${path}`
-              })
+              }).filter(url => url !== null)
               if (nuxtUrls.length > 0) {
                 console.log('Precaching _nuxt assets:', nuxtUrls.length)
                 await Promise.all(
@@ -87,29 +100,33 @@ self.addEventListener('fetch', (event) => {
       const cachedResponse = await caches.match(event.request)
       
       // For _nuxt assets and static files: stale-while-revalidate
+      // This provides instant loading with background updates
       if (url.pathname.includes('/_nuxt/') || 
           event.request.destination === 'script' ||
           event.request.destination === 'style' ||
-          event.request.destination === 'image') {
-        // Return cached version immediately if available
+          event.request.destination === 'image' ||
+          event.request.destination === 'font') {
+        // Return cached version immediately if available (stale-while-revalidate)
         if (cachedResponse) {
-          // Update cache in background
+          // Update cache in background (non-blocking)
           fetch(event.request)
             .then((response) => {
-              if (response.ok) {
+              if (response.ok && response.status === 200) {
                 caches.open(CACHE_NAME).then((cache) => {
                   cache.put(event.request, response.clone())
                 })
               }
             })
-            .catch(() => {}) // Ignore fetch errors in background update
+            .catch(() => {
+              // Ignore fetch errors in background update - cached version is fine
+            })
           return cachedResponse
         }
         
-        // If not cached, fetch and cache
+        // If not cached, fetch and cache (network-first with cache fallback)
         try {
           const response = await fetch(event.request)
-          if (response.ok) {
+          if (response.ok && response.status === 200) {
             const responseClone = response.clone()
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseClone)
@@ -117,8 +134,12 @@ self.addEventListener('fetch', (event) => {
           }
           return response
         } catch (error) {
-          // Return 404 if fetch fails and no cache
-          return new Response('', { status: 404 })
+          // If network fails and no cache, return error
+          console.warn('Failed to fetch and no cache available:', event.request.url)
+          return new Response('Resource not available offline', { 
+            status: 503,
+            headers: { 'Content-Type': 'text/plain' }
+          })
         }
       }
       

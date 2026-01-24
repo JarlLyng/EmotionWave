@@ -14,7 +14,7 @@ Create a data-driven artwork where the website changes in real-time based on glo
 - **UI**: TailwindCSS 4.1.17
 - **Visuals**: Three.js 0.181.2 for particle effects (lazy loaded)
 - **Audio**: Tone.js 15.1.22 for generative ambient sound (lazy loaded)
-- **Data**: GDELT API for news sentiment analysis
+- **Data**: Multi-source sentiment analysis (GDELT API, NewsAPI, Reddit)
 - **PWA**: Service Worker for offline functionality
 - **TypeScript**: Full type safety throughout the application
 
@@ -40,12 +40,15 @@ Create a data-driven artwork where the website changes in real-time based on glo
 - User interaction required to start audio (browser policy)
 
 ### Sentiment Analysis
-- Real-time analysis of news articles via GDELT API
-- Multiple news sources for balanced sentiment
+- **Multi-source aggregation**: Combines data from GDELT API, NewsAPI (optional), and Reddit
+- Real-time analysis of news articles from multiple sources
+- Weighted average sentiment across all sources for better accuracy
+- Retry logic with exponential backoff for reliable data fetching
 - 30-second cache to limit API calls
 - Sentiment score range: -1 (negative) to +1 (positive)
 - Smooth animated transitions between sentiment scores
-- Automatic fallback to dynamic time-based data if API fails
+- Automatic fallback to dynamic time-based data if APIs fail
+- Graceful degradation: works even if some APIs are unavailable
 
 ### Progressive Web App (PWA)
 - Offline functionality with service worker

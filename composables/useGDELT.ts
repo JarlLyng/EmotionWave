@@ -108,9 +108,9 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
     // Get dynamic date range (last 24 hours)
     const dateRange = getDateRange()
     
-    // Very simple query: just get recent news in Danish or English
-    // Complex queries can cause issues with GDELT API
-    const query = 'language:dan OR language:eng'
+    // Focused query: get relevant news in Danish or English
+    // More specific query to get higher quality, relevant news
+    const query = '(language:dan OR language:eng) AND (politics OR technology OR society OR economy OR climate OR health OR world OR international) NOT (sport OR entertainment OR celebrity OR gossip OR fashion)'
     
     // Build URL with proper encoding
     const params = new URLSearchParams({
@@ -224,31 +224,34 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
       return acc
     }, {} as Record<string, typeof normalizedArticles>)
 
-    // Calculate raw average for each source
+    // Calculate raw average for each source (before normalization)
+    // Keep raw scores to preserve variance, normalize only once on total
     const sources = Object.entries(sourceGroups).map(([name, articles]) => {
       const rawAvgSentiment = articles.reduce((sum, article) => sum + article.sentiment, 0) / articles.length
       const articleCount = articles.length
       return {
         name,
-        rawScore: rawAvgSentiment,
-        score: normalizeSentiment(rawAvgSentiment),
+        rawScore: rawAvgSentiment, // Raw score before normalization
         articles: articleCount,
         weight: articleCount
       }
     })
 
-    // Calculate weighted average on raw scores
+    // Calculate weighted average on raw scores (before normalization)
     const totalWeight = sources.reduce((sum, source) => sum + source.weight, 0)
     const rawWeightedAverage = totalWeight > 0
       ? sources.reduce((sum, source) => sum + (source.rawScore * source.weight), 0) / totalWeight
       : 0
     
-    // Normalize only once on total score
+    // Normalize only once on total score - this preserves variance better
     const averageSentiment = normalizeSentiment(rawWeightedAverage)
     console.log(`Overall weighted sentiment score: ${averageSentiment.toFixed(2)} (from ${sources.length} sources, ${normalizedArticles.length} total articles)`)
     
-    // Return sources without weight and rawScore fields
-    const sourcesForResponse = sources.map(({ weight, rawScore, ...rest }) => rest)
+    // Normalize source scores for response (only for display, not for calculation)
+    const sourcesForResponse = sources.map(({ rawScore, ...rest }) => ({
+      ...rest,
+      score: normalizeSentiment(rawScore) // Normalize only for response
+    }))
     
     return {
       score: averageSentiment,
@@ -320,8 +323,7 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
               const rawAvgSentiment = articles.reduce((sum, article) => sum + article.sentiment, 0) / articles.length
               return {
                 name,
-                rawScore: rawAvgSentiment,
-                score: normalizeSentiment(rawAvgSentiment),
+                rawScore: rawAvgSentiment, // Raw score before normalization
                 articles: articles.length,
                 weight: articles.length
               }
@@ -332,8 +334,13 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
               ? sources.reduce((sum, source) => sum + (source.rawScore * source.weight), 0) / totalWeight
               : 0
             
+            // Normalize only once on total score
             const averageSentiment = normalizeSentiment(rawWeightedAverage)
-            const sourcesForResponse = sources.map(({ weight, rawScore, ...rest }) => rest)
+            // Normalize source scores for response (only for display)
+            const sourcesForResponse = sources.map(({ rawScore, ...rest }) => ({
+              ...rest,
+              score: normalizeSentiment(rawScore)
+            }))
             
             return {
               score: averageSentiment,

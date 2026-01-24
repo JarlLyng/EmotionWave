@@ -14,18 +14,34 @@ onMounted(() => {
     const baseURL = config.app.baseURL || '/'
     
     // Build service worker path using URL constructor to handle absolute URLs correctly
-    const baseUrlObj = baseURL.startsWith('http') 
-      ? new URL(baseURL)
-      : new URL(baseURL, window.location.origin)
+    // This properly handles both relative and absolute baseURLs
+    let baseUrlObj: URL
+    try {
+      if (baseURL.startsWith('http://') || baseURL.startsWith('https://')) {
+        baseUrlObj = new URL(baseURL)
+      } else {
+        // Relative path - resolve against current origin
+        baseUrlObj = new URL(baseURL, window.location.origin)
+      }
+    } catch (error) {
+      console.error('Invalid baseURL:', baseURL, error)
+      baseUrlObj = new URL('/', window.location.origin)
+    }
+    
+    // Ensure baseURL ends with / for proper scope
+    if (!baseUrlObj.pathname.endsWith('/')) {
+      baseUrlObj.pathname += '/'
+    }
+    
     const swPath = new URL('sw.js', baseUrlObj).toString()
     const scope = baseUrlObj.toString()
     
     navigator.serviceWorker.register(swPath, { scope })
       .then((registration) => {
-        console.log('SW registered: ', registration)
+        console.log('Service Worker registered successfully:', registration.scope)
       })
       .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError)
+        console.error('Service Worker registration failed:', registrationError)
       })
   }
 })

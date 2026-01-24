@@ -35,6 +35,9 @@ jobs:
         env:
           NODE_ENV: production
           NUXT_PUBLIC_SITE_URL: ${{ secrets.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/' }}
+          NUXT_PUBLIC_BASE_URL: ${{ secrets.NUXT_PUBLIC_BASE_URL || '/EmotionWave/' }}
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY || '' }}
+          HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY || '' }}
         run: |
           echo "Building Nuxt application..."
           npm run generate
