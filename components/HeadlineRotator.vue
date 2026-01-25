@@ -64,8 +64,8 @@ function startRotation() {
   }
   
   if (validArticles.value.length > 1) {
-    // Rotate every 3 seconds
-    intervalId = setInterval(rotateHeadline, 3000)
+    // Rotate every 5 seconds
+    intervalId = setInterval(rotateHeadline, 5000)
   }
 }
 
