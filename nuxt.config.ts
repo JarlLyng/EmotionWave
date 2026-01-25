@@ -37,7 +37,7 @@ export default defineNuxtConfig({
       },
       meta: [
         { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1, user-scalable=no' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'description', content: 'EmotionWave is an interactive web experience that visualizes global sentiment in real-time. Watch as the world\'s mood changes through dynamic visuals and ambient sound, powered by live news analysis from GDELT, NewsAPI, and Reddit.' },
         { name: 'keywords', content: 'sentiment analysis, global mood, real-time data visualization, news sentiment, interactive web, data art, emotion visualization, world mood tracker' },
         { name: 'author', content: 'Jarl Lyng' },

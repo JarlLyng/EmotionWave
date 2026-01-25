@@ -184,8 +184,9 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
       signal: controller.signal,
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0'
+        'Accept': 'application/json'
+        // Note: User-Agent header is not allowed in browser fetch requests
+        // GDELT API should work without it
       }
     })
 
