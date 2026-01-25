@@ -27,6 +27,7 @@ Create a data-driven artwork where the website changes in real-time based on glo
 - Smooth 60fps animations and transitions
 - Responsive design with mobile optimization
 - GPU-accelerated rendering with WebGL
+- **Live headline display**: Rotating article headlines centered on screen, updating every 5 seconds
 
 ### Audio Experience
 - Generative ambient music using Tone.js
@@ -42,15 +43,20 @@ Create a data-driven artwork where the website changes in real-time based on glo
 ### Sentiment Analysis
 - **Multi-source aggregation**: Combines data from GDELT API, NewsAPI (optional), and Reddit
 - **Advanced analysis**: Optional HuggingFace Inference API integration for improved sentiment detection
+  - Strategically used on top 10 articles for balance between accuracy and performance
+  - Remaining articles use fast keyword-based analysis
 - **Keyword-based fallback**: Enhanced keyword analysis when APIs don't provide explicit sentiment scores
+- **Reddit integration**: Social media sentiment with full weight for valuable real-world mood signals
 - Real-time analysis of news articles from multiple sources
 - Weighted average sentiment across all sources for better accuracy
+- Filters out articles with zero sentiment (missing data) for improved accuracy
 - Retry logic with exponential backoff for reliable data fetching
 - 30-second cache to limit API calls
 - Sentiment score range: -1 (negative) to +1 (positive)
 - Smooth animated transitions between sentiment scores
 - Automatic fallback to dynamic time-based data if APIs fail
 - Graceful degradation: works even if some APIs are unavailable
+- **Article headlines**: API returns article titles for live display on the site
 
 ### Progressive Web App (PWA)
 - Offline functionality with service worker

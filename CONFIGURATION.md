@@ -96,30 +96,37 @@ modules: ['@nuxtjs/tailwindcss']
 ### News Sources
 - **Primary**: GDELT API (always used)
 - **Secondary**: NewsAPI (optional, requires API key)
-  - Uses HuggingFace Inference API for sentiment analysis (if API key provided)
-  - Falls back to keyword-based sentiment if HuggingFace unavailable
-- **Social**: Reddit (optional, lower weight)
+  - Uses HuggingFace Inference API for sentiment analysis on top 10 articles (if API key provided)
+  - Remaining articles use fast keyword-based sentiment
+  - Falls back to keyword-based sentiment if HuggingFace unavailable or times out
+- **Social**: Reddit (optional, full weight - social sentiment is valuable)
+  - Uses improved keyword-based sentiment analysis
+  - Top 20 posts selected for better signal
 - **Languages**: English and Danish news (separate API calls for NewsAPI)
 - **Query**: Focused on politics, technology, society (excludes sports/entertainment)
 - **Time Range**: Last 24 hours
 - **Max Articles**: 30 articles per source
-- **Aggregation**: Weighted average across all available sources
+- **Aggregation**: Weighted average across all available sources, filtered by valid (non-zero) sentiment
 
 ### Sentiment Analysis Methods
 - **GDELT API**: Uses built-in sentiment/tone fields when available
 - **HuggingFace**: Advanced ML-based sentiment analysis (optional, requires API key)
   - Model: cardiffnlp/twitter-roberta-base-sentiment-latest
-  - Falls back to keyword-based if API unavailable
+  - Strategically used on top 10 articles only (prevents timeouts)
+  - 3-second timeout per request to prevent hanging
+  - Falls back to keyword-based if API unavailable or times out
 - **Keyword-based**: Enhanced keyword analysis with weighted scoring
   - Expanded keyword lists with positive/negative words
   - Weighted scoring (strong words get higher weight)
   - Multiple occurrence counting
   - Text length normalization
+  - Used for all articles beyond top 10 (faster processing)
 
 ### Sentiment Score Range
 - **Range**: -1 (negative) to +1 (positive)
 - **Normalization**: GDELT values normalized to [-1, 1]
-- **Weighted Average**: Based on article count per source
+- **Weighted Average**: Based on valid (non-zero) article count per source
+- **Data Filtering**: Articles with exactly 0 sentiment are filtered out when calculating averages (likely missing data)
 
 ### Fallback Data
 - **Trigger**: API unavailable or error

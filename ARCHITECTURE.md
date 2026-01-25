@@ -56,6 +56,20 @@ This document describes the technical architecture and component structure of Em
   - Smooth animations
   - Accessible modal dialog
 
+### HeadlineRotator.vue
+- **Purpose**: Displays rotating article headlines from sentiment analysis
+- **Responsibilities**:
+  - Shows article titles centered on screen
+  - Rotates headlines every 5 seconds
+  - Filters articles with valid titles
+  - Manages smooth fade transitions between headlines
+- **Key Features**:
+  - Centered display with responsive text sizing
+  - Smooth opacity transitions (500ms fade)
+  - Random initial headline selection
+  - Non-blocking overlay (pointer-events-none)
+  - Only displays when articles are available
+
 ## State Management
 
 ### useSentiment.ts Composable
@@ -63,6 +77,7 @@ This document describes the technical architecture and component structure of Em
 - **Responsibilities**:
   - Fetches sentiment data from API
   - Manages sentiment score state
+  - Stores article headlines for display
   - Handles API fetching with error handling
   - Implements smooth score transitions using requestAnimationFrame
   - Polls API every 30 seconds
@@ -73,6 +88,7 @@ This document describes the technical architecture and component structure of Em
   - Error handling with user-friendly messages
   - Lifecycle management (start/stop polling)
   - Falls back to client-side GDELT API when server API unavailable
+  - Stores articles array with titles, URLs, sources, and sentiment
 
 ### useGDELT.ts Composable
 - **Purpose**: Client-side GDELT API integration for static hosting
@@ -110,12 +126,17 @@ This document describes the technical architecture and component structure of Em
 - **Key Features**:
   - **Multi-source aggregation**: Combines data from multiple APIs for better accuracy
   - **HuggingFace integration**: Optional advanced sentiment analysis via Inference API
+    - Strategically used on top 10 articles only (prevents timeouts, maintains accuracy)
+    - Remaining articles use fast keyword-based analysis
   - **Keyword-based fallback**: Enhanced keyword analysis with weighted scoring when APIs don't provide explicit sentiment
+  - **Reddit integration**: Social media sentiment with full weight (removed 0.5x reduction)
+  - **Data filtering**: Filters out articles with exactly 0 sentiment (missing data) for better accuracy
   - **Retry logic**: Exponential backoff for failed API calls (3 retries)
   - **Dynamic date range**: Last 24 hours of news
   - **Focused queries**: Filters out noise (sports, entertainment, etc.)
   - **Normalized scores**: All sentiment values normalized to [-1, 1]
-  - **Weighted averages**: Articles weighted by source and count
+  - **Weighted averages**: Articles weighted by valid (non-zero) article count per source
+  - **Article return**: Returns up to 50 articles with titles, URLs, sources, and sentiment for display
   - **Graceful degradation**: Works even if some APIs fail
   - **Error handling**: Comprehensive error handling and logging
 
@@ -149,11 +170,12 @@ This document describes the technical architecture and component structure of Em
    - Starts polling every 30 seconds
 
 2. **Sentiment Update**:
-   - API returns sentiment score
+   - API returns sentiment score and articles array
    - Score animates smoothly to new value
    - VisualLayer updates particle colors
    - AmbientSound updates music scale
    - SentimentMeter updates display
+   - HeadlineRotator displays article headlines (rotates every 5 seconds)
 
 3. **Error Handling**:
    - API fails → Fallback to time-based data
@@ -187,6 +209,7 @@ EmotionWave/
 │   ├── VisualLayer.vue        # Three.js particle system
 │   ├── SentimentMeter.vue     # UI component for score display
 │   ├── AmbientSound.vue       # Tone.js audio system
+│   ├── HeadlineRotator.vue    # Rotating article headlines display
 │   └── InfoDialog.vue         # Information dialog
 │
 ├── composables/
