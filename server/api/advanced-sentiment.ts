@@ -44,6 +44,7 @@ interface SentimentData {
     articles: number
   }>
   apiSources: string[] // Which APIs contributed data
+  articles?: Article[] // Include article titles for display
 }
 
 // Cache configuration
@@ -699,11 +700,15 @@ async function aggregateSentiment(): Promise<SentimentData> {
   console.log('Raw weighted average before normalization:', rawWeightedAverage.toFixed(3))
   console.log('Source breakdown:', sourcesForResponse.map(s => `${s.name}: ${s.score.toFixed(3)} (${s.articles} articles)`).join(', '))
   
+  // Filter articles with valid titles for display
+  const articlesWithTitles = allArticles.filter(a => a.title && a.title.trim().length > 0)
+  
   return {
     score: averageSentiment,
     sources: sourcesForResponse,
     timestamp: Date.now(),
-    apiSources
+    apiSources,
+    articles: articlesWithTitles.slice(0, 50) // Limit to 50 articles for performance
   }
 }
 
@@ -729,7 +734,8 @@ function getDynamicFallbackData(): SentimentData {
     sources: [
       { name: 'Fallback', score: finalScore, articles: 0 }
     ],
-    apiSources: ['Fallback']
+    apiSources: ['Fallback'],
+    articles: [] // No articles in fallback mode
   }
 }
 

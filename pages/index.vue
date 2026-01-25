@@ -2,6 +2,7 @@
   <main class="min-h-screen bg-black text-white" role="main" aria-label="EmotionWave sentiment visualization">
     <VisualLayer :sentiment-score="sentimentScore" />
     <AmbientSound :sentiment-score="sentimentScore" />
+    <HeadlineRotator :articles="articles" />
     <SentimentMeter 
       :score="sentimentScore" 
       :is-loading="isLoading" 
@@ -19,9 +20,10 @@ import VisualLayer from '~/components/VisualLayer.vue'
 import AmbientSound from '~/components/AmbientSound.vue'
 import SentimentMeter from '~/components/SentimentMeter.vue'
 import InfoDialog from '~/components/InfoDialog.vue'
+import HeadlineRotator from '~/components/HeadlineRotator.vue'
 import { useSentiment } from '~/composables/useSentiment'
 
-const { sentimentScore, isLoading, error, isUsingFallback, fetchSentiment, startPolling, stopPolling } = useSentiment()
+const { sentimentScore, isLoading, error, isUsingFallback, articles, fetchSentiment, startPolling, stopPolling } = useSentiment()
 
 // Structured data for SEO (JSON-LD) - using useHead instead of inline script
 const config = useRuntimeConfig()

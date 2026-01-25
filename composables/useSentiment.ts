@@ -8,6 +8,12 @@ interface SentimentData {
     negative: number
     neutral: number
   }
+  articles?: Array<{
+    title: string
+    url: string
+    source: string
+    sentiment: number
+  }>
 }
 
 /**
@@ -26,6 +32,7 @@ export function useSentiment() {
   const error = ref<string | null>(null)
   const isUsingFallback = ref(false) // Track if using fallback data
   const sources = ref<Record<string, number>>({})
+  const articles = ref<Array<{ title: string; url: string; source: string; sentiment: number }>>([])
   
   let intervalId: number | null = null
   let animationFrameId: number | null = null
@@ -106,6 +113,16 @@ export function useSentiment() {
         }, {})
       }
       
+      // Opdater artikler hvis de findes
+      if (data.articles && Array.isArray(data.articles)) {
+        articles.value = data.articles.map((article: any) => ({
+          title: article.title || '',
+          url: article.url || '',
+          source: article.source || 'Unknown',
+          sentiment: article.sentiment || 0
+        }))
+      }
+      
       if (!animationFrameId) {
         animateTransition()
       }
@@ -130,6 +147,16 @@ export function useSentiment() {
             acc[source.name] = source.score
             return acc
           }, {})
+        }
+        
+        // Update articles if they exist
+        if (data.articles && Array.isArray(data.articles)) {
+          articles.value = data.articles.map((article: any) => ({
+            title: article.title || '',
+            url: article.url || '',
+            source: article.source || 'Unknown',
+            sentiment: article.sentiment || 0
+          }))
         }
         
         if (!animationFrameId) {
@@ -195,6 +222,7 @@ export function useSentiment() {
     error,
     isUsingFallback,
     sources,
+    articles,
     fetchSentiment,
     startPolling,
     stopPolling
