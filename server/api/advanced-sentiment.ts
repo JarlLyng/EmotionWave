@@ -671,6 +671,7 @@ async function aggregateSentiment(): Promise<SentimentData> {
     return {
       name,
       rawScore: rawAvgSentiment,
+      score: normalizeSentiment(rawAvgSentiment), // Add score for interface compliance
       articles: articleCount,
       weight: validCount > 0 ? validCount : articleCount // Weight by valid articles
     }

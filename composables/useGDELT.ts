@@ -277,9 +277,12 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
         hasAvgTone: 'avgtone' in sampleArticle,
         keys: allKeys,
         sampleValues: Object.fromEntries(
-          allKeys.slice(0, 10).map(key => [key, typeof sampleArticle[key] === 'string' 
-            ? sampleArticle[key].substring(0, 50) 
-            : sampleArticle[key]])
+          allKeys.slice(0, 10).map(key => {
+            const value = (sampleArticle as Record<string, any>)[key]
+            return [key, typeof value === 'string' 
+              ? value.substring(0, 50) 
+              : value]
+          })
         )
       })
     }

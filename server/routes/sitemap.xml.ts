@@ -6,7 +6,7 @@ import { defineEventHandler } from 'h3'
  */
 export default defineEventHandler((event) => {
   const config = useRuntimeConfig()
-  const siteUrl = config.public?.siteUrl || process.env.NUXT_PUBLIC_SITE_URL || 
+  const siteUrl = config.public?.siteUrl || 
                   'https://jarllyng.github.io/EmotionWave/'
   
   const baseURL = new URL(siteUrl)

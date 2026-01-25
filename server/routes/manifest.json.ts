@@ -6,9 +6,8 @@ import { defineEventHandler } from 'h3'
  */
 export default defineEventHandler((event) => {
   const config = useRuntimeConfig()
-  const baseURL = config.app?.baseURL || process.env.NUXT_PUBLIC_BASE_URL || 
-                  (process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/')
-  const siteUrl = config.public?.siteUrl || process.env.NUXT_PUBLIC_SITE_URL || 
+  const baseURL = config.app?.baseURL || '/'
+  const siteUrl = config.public?.siteUrl || 
                   'https://jarllyng.github.io/EmotionWave/'
   
   // Build absolute URLs for icons to ensure they work correctly
