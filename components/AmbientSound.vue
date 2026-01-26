@@ -132,19 +132,15 @@ const initAudio = async () => {
       wet: 0.25 + Math.random() * 0.15
     })
     
-    // Opret synth med variation i oscillator-type
-    const oscillatorTypes = ['sine', 'triangle', 'sawtooth']
-    const randomOscType = oscillatorTypes[Math.floor(Math.random() * oscillatorTypes.length)]
-    
     synth = new Tone.PolySynth(Tone.Synth, {
       oscillator: {
-        type: randomOscType
+        type: 'triangle' // Default start lyd
       },
       envelope: {
-        attack: 1.5 + Math.random() * 1, // Variation i attack
-        decay: 0.8 + Math.random() * 0.5,
-        sustain: 0.4 + Math.random() * 0.3,
-        release: 3 + Math.random() * 2
+        attack: 1,
+        decay: 0.5,
+        sustain: 0.5,
+        release: 3
       }
     })
     
@@ -190,6 +186,36 @@ const playChord = async () => {
     const chord = chordVariations[chordIndex % chordVariations.length]
     chordIndex++
     
+    // Opdater synth karakter (Timbre/Envelope) dynamisk baseret på sentiment
+    // Dette ændrer lyden fra "skarp/stresset" til "blød/drømmende"
+    if (synth) {
+       if (score <= -0.5) {
+        // Negativ: Skarp, markant lyd (Sawtooth)
+        synth.set({
+          oscillator: { type: 'sawtooth' },
+          envelope: { attack: 0.05, decay: 0.2, sustain: 0.1, release: 1 }
+        })
+      } else if (score <= 0) {
+        // Neutral-Negativ: Kold, hul lyd (Square med langsomt attack)
+        synth.set({
+          oscillator: { type: 'square' },
+          envelope: { attack: 2, decay: 1, sustain: 0.2, release: 3 }
+        })
+      } else if (score <= 0.5) {
+        // Neutral-Positiv: Blød, klar lyd (Triangle)
+        synth.set({
+          oscillator: { type: 'triangle' },
+          envelope: { attack: 0.5, decay: 0.5, sustain: 0.5, release: 3 }
+        })
+      } else {
+        // Positiv: Rig, varm lyd (Fat Sine/Triangle)
+        synth.set({
+          oscillator: { type: 'fatsine' }, // Rigere sinus-lyd
+          envelope: { attack: 1.5, decay: 1, sustain: 0.8, release: 5 }
+        })
+      }
+    }
+
     // Variation i note-durationer
     const durations = ['2n', '4n', '1n', '2n.']
     const chordDuration = durations[Math.floor(Math.random() * durations.length)]

@@ -39,6 +39,7 @@ Create a data-driven artwork where the website changes in real-time based on glo
 - **Multiple chord variations**: 4-5 different chord progressions per sentiment range
 - **Varied timing**: Dynamic intervals (3-6 seconds) between musical phrases
 - **Rich melodic content**: Additional notes, arpeggios, and bass lines
+- **Dynamic Timbre**: Instrument character (oscillator/envelope) morphs between textures (Sharp/Soft) based on mood
 - **Dynamic effects**: Filter and reverb adjust based on sentiment with variation
 - Reverb and delay effects for atmospheric sound
 - Volume control with smooth transitions

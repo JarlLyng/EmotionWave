@@ -15,7 +15,8 @@ This document describes the technical architecture and component structure of Em
   - Lazy loading of Three.js library
   - GPU-accelerated rendering with WebGL
   - Responsive particle count (mobile vs desktop)
-  - Smooth color transitions
+  - Smooth color transitions (Lerp interpolation)
+  - CSS-based smooth background transitions
 
 ### AmbientSound.vue
 - **Purpose**: Generates ambient music based on sentiment
@@ -37,7 +38,8 @@ This document describes the technical architecture and component structure of Em
   - **Melodic elements**: 2-3 additional notes from scale with varied timing
   - **Arpeggios**: 30% chance of playing chords as arpeggios
   - **Bass notes**: 40% chance of adding bass notes one octave lower
-  - **Oscillator variation**: Random oscillator types (sine, triangle, sawtooth) on initialization
+  - **Oscillator variation**: Dynamic oscillator types (Sine, Triangle, Square, Sawtooth) based on sentiment
+  - **Dynamic Timbre**: Changes instrument character (Envelope/Attack) to match mood (Sharp/Aggressive vs Soft/Dreamy)
   - **Dynamic effects**: Filter frequency and reverb amount vary based on sentiment with random variation
   - **Varied note durations**: Different note lengths (2n, 4n, 1n, 2n.) for more organic sound
   - **Correct effect chain**: Properly chained effects (synth → filter → reverb → delay → destination)
@@ -149,8 +151,8 @@ This document describes the technical architecture and component structure of Em
   - **Retry logic**: Exponential backoff for failed API calls (3 retries)
   - **Dynamic date range**: Last 24 hours of news
   - **Focused queries**: Filters out noise (sports, entertainment, etc.)
-  - **Normalized scores**: All sentiment values normalized to typically [-1, 1] (amplified by 3.3x factor for better sensitivity)
-  - **Intensity-weighted averages**: Articles weighted by both source reliability AND emotional intensity (stronger emotions count more)
+  - **Balanced Power Weighting**: Articles weighted by `Score^1.5` to prioritize strong signals without ignoring the rest
+  - **Balanced Normalization**: Sensitivity factor of 2.5 for improved responsiveness
   - **Article return**: Returns up to 50 articles with titles, URLs, sources, and sentiment for display
   - **Smart Truncation**: Intelligently truncates text at sentence boundaries to preserve semantic meaning for the model
   - **Result Caching**: In-memory LRU cache prevents re-analyzing the same articles (saves API quota and improves speed)

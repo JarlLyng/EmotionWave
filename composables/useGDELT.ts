@@ -51,8 +51,8 @@ function getDateRange(): { start: string; end: string } {
  */
 function normalizeSentiment(value: number): number {
   const clamped = Math.max(-10, Math.min(10, value))
-  // Amplify sensitivity: Divide by 3 instead of 10
-  return Math.max(-1, Math.min(1, clamped / 3))
+  // Amplify sensitivity: Divide by 2.5 (Middle ground)
+  return Math.max(-1, Math.min(1, clamped / 2.5))
 }
 
 /**
@@ -355,16 +355,16 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
     })
 
     // Calculate intense-weighted average
-    // We weight articles not just by source reliability, but by the INTENSITY of their sentiment
+    // Middle ground: Weight by score^1.5
     const totalWeight = sources.reduce((sum, source) => {
-      // Intensity multiplier: 1 + abs(rawScore)
-      const intensityWeight = 1 + Math.abs(source.rawScore)
+      // Intensity multiplier: 1 + rawScore^1.5
+      const intensityWeight = 1 + Math.pow(Math.abs(source.rawScore), 1.5)
       return sum + (source.weight * intensityWeight)
     }, 0)
 
     const rawWeightedAverage = totalWeight > 0
       ? sources.reduce((sum, source) => {
-        const intensityWeight = 1 + Math.abs(source.rawScore)
+        const intensityWeight = 1 + Math.pow(Math.abs(source.rawScore), 1.5)
         return sum + (source.rawScore * source.weight * intensityWeight)
       }, 0) / totalWeight
       : 0
