@@ -102,7 +102,7 @@ This document describes the technical architecture and component structure of Em
   - Dynamic date range queries (last 24 hours)
   - Focused queries (filters out sports, entertainment, etc.)
   - Sentiment normalization to [-1, 1] range
-  - Weighted average calculation across sources
+  - Intensity-weighted average calculation across sources (stronger emotions have higher impact)
   - Automatic retry with simpler query if complex query fails
   - Time-based fallback data when API unavailable
 - **Used by**: `useSentiment.ts` as fallback when server API is unavailable
@@ -134,9 +134,11 @@ This document describes the technical architecture and component structure of Em
   - **Retry logic**: Exponential backoff for failed API calls (3 retries)
   - **Dynamic date range**: Last 24 hours of news
   - **Focused queries**: Filters out noise (sports, entertainment, etc.)
-  - **Normalized scores**: All sentiment values normalized to [-1, 1]
-  - **Weighted averages**: Articles weighted by valid (non-zero) article count per source
+  - **Normalized scores**: All sentiment values normalized to typically [-1, 1] (amplified by 3.3x factor for better sensitivity)
+  - **Intensity-weighted averages**: Articles weighted by both source reliability AND emotional intensity (stronger emotions count more)
   - **Article return**: Returns up to 50 articles with titles, URLs, sources, and sentiment for display
+  - **Smart Truncation**: Intelligently truncates text at sentence boundaries to preserve semantic meaning for the model
+  - **Result Caching**: In-memory LRU cache prevents re-analyzing the same articles (saves API quota and improves speed)
   - **Graceful degradation**: Works even if some APIs fail
   - **Error handling**: Comprehensive error handling and logging
 
@@ -190,6 +192,7 @@ This document describes the technical architecture and component structure of Em
 - **Throttled events**: Mouse and resize handlers throttled
 - **Service worker**: Caching for offline functionality
 - **Image optimization**: Optimized assets in public folder
+- **API Caching**: In-memory caching of sentiment analysis results
 - **Bundle size**: ~700KB (gzipped)
 
 ## Project Structure

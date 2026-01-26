@@ -28,7 +28,7 @@ interface SentimentData {
 function getDateRange(): { start: string; end: string } {
   const now = new Date()
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-  
+
   // Format: YYYYMMDDHHMMSS
   const formatDate = (date: Date): string => {
     const year = date.getFullYear()
@@ -39,7 +39,7 @@ function getDateRange(): { start: string; end: string } {
     const seconds = String(date.getSeconds()).padStart(2, '0')
     return `${year}${month}${day}${hours}${minutes}${seconds}`
   }
-  
+
   return {
     start: formatDate(yesterday),
     end: formatDate(now)
@@ -51,7 +51,8 @@ function getDateRange(): { start: string; end: string } {
  */
 function normalizeSentiment(value: number): number {
   const clamped = Math.max(-10, Math.min(10, value))
-  return Math.max(-1, Math.min(1, clamped / 10))
+  // Amplify sensitivity: Divide by 3 instead of 10
+  return Math.max(-1, Math.min(1, clamped / 3))
 }
 
 /**
@@ -61,7 +62,7 @@ function normalizeSentiment(value: number): number {
 function keywordBasedSentiment(text: string): number {
   const lowerText = text.toLowerCase()
   let sentiment = 0
-  
+
   // Expanded positive words with weights
   const positiveWords: Array<[string, number]> = [
     ['excellent', 0.3], ['amazing', 0.3], ['wonderful', 0.3], ['fantastic', 0.3],
@@ -72,7 +73,7 @@ function keywordBasedSentiment(text: string): number {
     ['peace', 0.2], ['unity', 0.15], ['cooperation', 0.15], ['innovation', 0.2],
     ['fantastisk', 0.3], ['fremgang', 0.2], ['lykkedes', 0.2], ['succes', 0.2]
   ]
-  
+
   // Expanded negative words with weights
   const negativeWords: Array<[string, number]> = [
     ['terrible', 0.3], ['awful', 0.3], ['horrible', 0.3], ['disaster', 0.3],
@@ -83,26 +84,26 @@ function keywordBasedSentiment(text: string): number {
     ['dårlig', 0.2], ['katastrofe', 0.3], ['fejlet', 0.2], ['krise', 0.3],
     ['krig', 0.3], ['vold', 0.25], ['frygt', 0.2]
   ]
-  
+
   // Count positive matches (allowing multiple occurrences)
   positiveWords.forEach(([word, weight]) => {
     const count = (lowerText.match(new RegExp(word, 'g')) || []).length
     sentiment += count * weight
   })
-  
+
   // Count negative matches (allowing multiple occurrences)
   negativeWords.forEach(([word, weight]) => {
     const count = (lowerText.match(new RegExp(word, 'g')) || []).length
     sentiment -= count * weight
   })
-  
+
   // Normalize based on text length (longer texts can have more matches)
   const textLength = text.split(/\s+/).length
   const lengthFactor = Math.min(1, 100 / textLength) // Normalize for texts up to 100 words
-  
+
   // Scale to GDELT range (-10 to 10)
   const scaled = sentiment * 10 * lengthFactor
-  
+
   return Math.max(-10, Math.min(10, scaled))
 }
 
@@ -113,15 +114,15 @@ function getDynamicFallbackData(): SentimentData {
   const now = Date.now()
   const hour = new Date(now).getHours()
   const minute = new Date(now).getMinutes()
-  
+
   const timeBasedSeed = (hour * 60 + minute) % 1440
   const baseScore = 0.3 + (Math.sin(timeBasedSeed * 0.1) * 0.4)
-  
+
   const seconds = new Date(now).getSeconds()
   const variation = (seconds % 30) / 100
-  
+
   const finalScore = Math.max(-1, Math.min(1, baseScore + variation))
-  
+
   return {
     score: finalScore,
     timestamp: now,
@@ -152,19 +153,19 @@ function getDynamicFallbackData(): SentimentData {
 export async function fetchGDELTSentiment(): Promise<SentimentData> {
   try {
     console.log('Fetching news from GDELT (client-side)...')
-    
+
     // Create AbortController for timeout
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 seconds timeout
-    
+
     // Get dynamic date range (last 24 hours)
     const dateRange = getDateRange()
-    
+
     // Focused query: get relevant news (removed language filter as GDELT doesn't support language:dan syntax)
     // GDELT doc API doesn't support language:dan in query - we'll filter by content relevance instead
     // More specific query to get higher quality, relevant news
     const query = '(politics OR technology OR society OR economy OR climate OR health OR world OR international) NOT (sport OR entertainment OR celebrity OR gossip OR fashion)'
-    
+
     // Build URL with proper encoding
     const params = new URLSearchParams({
       query: query,
@@ -175,10 +176,10 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
       startdatetime: dateRange.start,
       enddatetime: dateRange.end
     })
-    
+
     const apiUrl = `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`
     console.log('GDELT API URL:', apiUrl)
-    
+
     // Fetch from GDELT API
     const response = await fetch(apiUrl, {
       signal: controller.signal,
@@ -194,7 +195,7 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
 
     // Read response as text first to handle both JSON and error messages
     const responseText = await response.text()
-    
+
     if (!response.ok) {
       console.error('GDELT API HTTP error:', response.status, response.statusText)
       console.error('Response body:', responseText.substring(0, 500))
@@ -203,12 +204,12 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
 
     // Check for error messages before trying to parse JSON
     // GDELT sometimes returns plain text error messages instead of JSON
-    if (responseText.toLowerCase().includes('error') || 
-        responseText.toLowerCase().includes('invalid') ||
-        responseText.toLowerCase().includes('one or more') ||
-        responseText.toLowerCase().includes('too short') ||
-        responseText.toLowerCase().includes('too long') ||
-        responseText.toLowerCase().includes('too common')) {
+    if (responseText.toLowerCase().includes('error') ||
+      responseText.toLowerCase().includes('invalid') ||
+      responseText.toLowerCase().includes('one or more') ||
+      responseText.toLowerCase().includes('too short') ||
+      responseText.toLowerCase().includes('too long') ||
+      responseText.toLowerCase().includes('too common')) {
       console.error('GDELT API returned an error message:', responseText.substring(0, 200))
       throw new Error(`GDELT API error: ${responseText.substring(0, 200)}`)
     }
@@ -221,26 +222,26 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
       // If parsing fails, check if it's an error message
       console.error('Failed to parse GDELT response as JSON')
       console.error('Response text:', responseText.substring(0, 500))
-      
+
       // Check for common error messages
-      if (responseText.toLowerCase().includes('error') || 
-          responseText.toLowerCase().includes('invalid') ||
-          responseText.toLowerCase().includes('one or more')) {
+      if (responseText.toLowerCase().includes('error') ||
+        responseText.toLowerCase().includes('invalid') ||
+        responseText.toLowerCase().includes('one or more')) {
         throw new Error(`GDELT API error: ${responseText.substring(0, 200)}`)
       }
-      
+
       throw new Error('Invalid JSON response from GDELT API')
     }
-    
+
     // Handle different response formats from GDELT
     let articles: GDELTResponse['articles'] = []
-    
+
     // Check for error messages in response
     if (data.error || data.message || (typeof data === 'string' && data.toLowerCase().includes('error'))) {
       console.error('GDELT API returned error:', data.error || data.message || data)
       throw new Error('GDELT API returned error response')
     }
-    
+
     if (Array.isArray(data)) {
       articles = data
     } else if (data.articles && Array.isArray(data.articles)) {
@@ -257,17 +258,17 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
       }
       return getDynamicFallbackData()
     }
-    
+
     console.log('GDELT response:', {
       totalArticles: articles.length,
       sources: [...new Set(articles.map((a: any) => a.source || a.domain || 'Unknown'))]
     })
-    
+
     if (!articles || articles.length === 0) {
       console.log('No articles found, using dynamic fallback')
       return getDynamicFallbackData()
     }
-    
+
     // Log sample article structure for debugging (before processing)
     if (articles.length > 0) {
       const sampleArticle = articles[0]
@@ -280,34 +281,34 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
         sampleValues: Object.fromEntries(
           allKeys.slice(0, 10).map(key => {
             const value = (sampleArticle as Record<string, any>)[key]
-            return [key, typeof value === 'string' 
-              ? value.substring(0, 50) 
+            return [key, typeof value === 'string'
+              ? value.substring(0, 50)
               : value]
           })
         )
       })
     }
-    
+
     // Normalize articles
     const normalizedArticles = articles.map((article: any) => {
       // GDELT may provide sentiment in different fields
       // Try multiple possible field names
-      let rawSentiment = article.sentiment || 
-                        article.tone || 
-                        article.avgtone || 
-                        article.avgtone || 
-                        (article.tone !== undefined ? article.tone : null)
-      
+      let rawSentiment = article.sentiment ||
+        article.tone ||
+        article.avgtone ||
+        article.avgtone ||
+        (article.tone !== undefined ? article.tone : null)
+
       // If GDELT doesn't provide sentiment, use keyword-based analysis on title/description
       if (rawSentiment === null || rawSentiment === undefined || rawSentiment === 0) {
         const text = `${article.title || ''} ${article.seo || ''} ${article.description || ''}`.toLowerCase()
         rawSentiment = keywordBasedSentiment(text)
       }
-      
-      const clampedSentiment = rawSentiment !== null && rawSentiment !== undefined 
+
+      const clampedSentiment = rawSentiment !== null && rawSentiment !== undefined
         ? Math.max(-10, Math.min(10, rawSentiment))
         : 0
-      
+
       return {
         sentiment: clampedSentiment,
         url: article.url || article.shareurl || '',
@@ -315,7 +316,7 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
         source: article.source || article.domain || 'Unknown'
       }
     })
-    
+
     // Log sentiment distribution for debugging
     const sentimentValues = normalizedArticles.map(a => a.sentiment).filter(s => s !== 0)
     if (sentimentValues.length > 0) {
@@ -329,7 +330,7 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
     } else {
       console.warn('All articles have sentiment 0 - GDELT may not be providing sentiment data in expected format')
     }
-    
+
     // Group articles by source
     const sourceGroups = normalizedArticles.reduce((acc, article) => {
       const source = article.source
@@ -353,22 +354,31 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
       }
     })
 
-    // Calculate weighted average on raw scores (before normalization)
-    const totalWeight = sources.reduce((sum, source) => sum + source.weight, 0)
+    // Calculate intense-weighted average
+    // We weight articles not just by source reliability, but by the INTENSITY of their sentiment
+    const totalWeight = sources.reduce((sum, source) => {
+      // Intensity multiplier: 1 + abs(rawScore)
+      const intensityWeight = 1 + Math.abs(source.rawScore)
+      return sum + (source.weight * intensityWeight)
+    }, 0)
+
     const rawWeightedAverage = totalWeight > 0
-      ? sources.reduce((sum, source) => sum + (source.rawScore * source.weight), 0) / totalWeight
+      ? sources.reduce((sum, source) => {
+        const intensityWeight = 1 + Math.abs(source.rawScore)
+        return sum + (source.rawScore * source.weight * intensityWeight)
+      }, 0) / totalWeight
       : 0
-    
+
     // Normalize only once on total score - this preserves variance better
     const averageSentiment = normalizeSentiment(rawWeightedAverage)
     console.log(`Overall weighted sentiment score: ${averageSentiment.toFixed(2)} (from ${sources.length} sources, ${normalizedArticles.length} total articles)`)
-    
+
     // Normalize source scores for response (only for display, not for calculation)
     const sourcesForResponse = sources.map(({ rawScore, ...rest }) => ({
       ...rest,
       score: normalizeSentiment(rawScore) // Normalize only for response
     }))
-    
+
     return {
       score: averageSentiment,
       sources: sourcesForResponse,
@@ -376,7 +386,7 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
     }
   } catch (error) {
     console.error('Error fetching sentiment data from GDELT:', error)
-    
+
     // If first attempt failed, try a simpler query without date range
     if (error instanceof Error && error.name !== 'AbortError') {
       try {
@@ -388,7 +398,7 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
           maxrecords: '30',
           sort: 'hybridrel'
         })
-        
+
         const simpleResponse = await fetch(
           `https://api.gdeltproject.org/api/v2/doc/doc?${simpleParams.toString()}`,
           {
@@ -397,21 +407,21 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
             }
           }
         )
-        
+
         if (simpleResponse.ok) {
           const simpleText = await simpleResponse.text()
-          
+
           // Check for error messages before parsing JSON
-          if (simpleText.toLowerCase().includes('error') || 
-              simpleText.toLowerCase().includes('invalid') ||
-              simpleText.toLowerCase().includes('one or more') ||
-              simpleText.toLowerCase().includes('queries co')) {
+          if (simpleText.toLowerCase().includes('error') ||
+            simpleText.toLowerCase().includes('invalid') ||
+            simpleText.toLowerCase().includes('one or more') ||
+            simpleText.toLowerCase().includes('queries co')) {
             console.error('GDELT retry returned error:', simpleText.substring(0, 200))
             throw new Error(`GDELT API error: ${simpleText.substring(0, 200)}`)
           }
-          
+
           const simpleData = JSON.parse(simpleText)
-          
+
           // Process the simpler response
           let articles: GDELTResponse['articles'] = []
           if (Array.isArray(simpleData)) {
@@ -421,7 +431,7 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
           } else if (simpleData.results && Array.isArray(simpleData.results)) {
             articles = simpleData.results
           }
-          
+
           if (articles && articles.length > 0) {
             console.log('Successfully fetched data with simpler query')
             // Process articles same way as before
@@ -435,7 +445,7 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
                 source: article.source || article.domain || 'Unknown'
               }
             })
-            
+
             const sourceGroups = normalizedArticles.reduce((acc, article) => {
               const source = article.source
               if (!acc[source]) {
@@ -459,7 +469,7 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
             const rawWeightedAverage = totalWeight > 0
               ? sources.reduce((sum, source) => sum + (source.rawScore * source.weight), 0) / totalWeight
               : 0
-            
+
             // Normalize only once on total score
             const averageSentiment = normalizeSentiment(rawWeightedAverage)
             // Normalize source scores for response (only for display)
@@ -467,7 +477,7 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
               ...rest,
               score: normalizeSentiment(rawScore)
             }))
-            
+
             return {
               score: averageSentiment,
               sources: sourcesForResponse,
@@ -479,11 +489,11 @@ export async function fetchGDELTSentiment(): Promise<SentimentData> {
         console.error('Retry also failed:', retryError)
       }
     }
-    
+
     if (error instanceof Error && error.name === 'AbortError') {
       console.log('Request timed out, using dynamic fallback data')
     }
-    
+
     return getDynamicFallbackData()
   }
 }
