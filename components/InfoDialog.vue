@@ -161,6 +161,8 @@ const isOpen = ref(false)
   display: flex;
   flex-direction: column;
   gap: 2.5rem;
+  padding-top: 16px;
+  padding-bottom: 16px;
 }
 
 .content-block {

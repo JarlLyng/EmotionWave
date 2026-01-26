@@ -12,8 +12,8 @@
     >
       <span class="sound-icon">
         <span v-if="isLoading" class="loading-spinner"></span>
-        <span v-else-if="needsInteraction">🎵</span>
-        <span v-else>{{ isPlaying ? '🔊' : '🔇' }}</span>
+        <span v-else-if="needsInteraction">Start music</span>
+        <span v-else>{{ isPlaying ? 'Stop music' : 'Start music' }}</span>
       </span>
     </button>
     <div v-if="isPlaying" class="volume-control">
@@ -52,6 +52,7 @@ let delay: any = null
 let filter: any = null
 let toneModule: any = null
 let chordInterval: any = null
+let chordIndex = 0 // Track hvilken variation vi er på
 
 const getButtonTitle = computed(() => {
   if (isLoading.value) return 'Initializing audio...'
@@ -68,8 +69,38 @@ const loadToneJS = async () => {
 }
 
 // Definer skalaer
-const C_MINOR_SCALE = ['C3', 'D3', 'Eb3', 'F3', 'G3', 'Ab3', 'Bb3', 'C4']
-const C_MAJOR_SCALE = ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4']
+const C_MINOR_SCALE = ['C3', 'D3', 'Eb3', 'F3', 'G3', 'Ab3', 'Bb3', 'C4', 'D4', 'Eb4']
+const C_MAJOR_SCALE = ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'E4']
+
+// Akkord-variationer for hver sentiment-range
+const CHORD_VARIATIONS = {
+  negative: [
+    ['C3', 'Eb3', 'G3'], // C mol
+    ['Ab3', 'C4', 'Eb4'], // Ab dur (relativ dur)
+    ['F3', 'Ab3', 'C4'], // F mol
+    ['G3', 'Bb3', 'D4'], // G mol
+  ],
+  neutralNegative: [
+    ['Eb3', 'G3', 'Bb3'], // Eb dur
+    ['C3', 'Eb3', 'G3', 'Bb3'], // C mol7
+    ['Ab3', 'C4', 'Eb4'], // Ab dur
+    ['F3', 'A3', 'C4'], // F dur
+  ],
+  neutralPositive: [
+    ['F3', 'A3', 'C4'], // F dur
+    ['C3', 'E3', 'G3', 'A3'], // Am7
+    ['G3', 'B3', 'D4'], // G dur
+    ['D3', 'F3', 'A3'], // D mol
+  ],
+  positive: [
+    ['C3', 'E3', 'G3'], // C dur
+    ['G3', 'B3', 'D4'], // G dur
+    ['F3', 'A3', 'C4'], // F dur
+    ['A3', 'C4', 'E4'], // Am
+    ['D3', 'F#3', 'A3'], // D dur
+  ]
+}
+
 
 // Opret synth med reverb og delay
 const initAudio = async () => {
@@ -77,45 +108,51 @@ const initAudio = async () => {
     const Tone = await loadToneJS()
     await Tone.start()
     
-    // Opret synth med reverb
-    synth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: {
-        type: 'sine'
-      },
-      envelope: {
-        attack: 2,
-        decay: 1,
-        sustain: 0.5,
-        release: 4
-      }
-    }).toDestination()
-    
-    // Tilføj reverb
-    reverb = new Tone.Reverb({
-      decay: 8,
-      wet: 0.8,
-      preDelay: 0.2
-    }).toDestination()
-    
-    // Tilføj delay
-    delay = new Tone.FeedbackDelay({
-      delayTime: '4n',
-      feedback: 0.4,
-      wet: 0.3
-    }).toDestination()
-    
-    // Kæd effekter sammen
-    synth.chain(reverb, delay, Tone.Destination)
-    
-    // Opret filter
+    // Opret filter først
     filter = new Tone.Filter({
       type: 'lowpass',
       frequency: 1000,
       rolloff: -24,
       Q: 1
-    }).toDestination()
+    })
     
-    synth.connect(filter)
+    // Tilføj reverb og generer den
+    reverb = new Tone.Reverb({
+      decay: 8,
+      wet: 0.8,
+      preDelay: 0.2
+    })
+    // Generer reverb impulsrespons (kort timeout for hurtigere init)
+    await reverb.generate()
+    
+    // Tilføj delay med variation
+    delay = new Tone.FeedbackDelay({
+      delayTime: '4n',
+      feedback: 0.3 + Math.random() * 0.2, // Variation i feedback
+      wet: 0.25 + Math.random() * 0.15
+    })
+    
+    // Opret synth med variation i oscillator-type
+    const oscillatorTypes = ['sine', 'triangle', 'sawtooth']
+    const randomOscType = oscillatorTypes[Math.floor(Math.random() * oscillatorTypes.length)]
+    
+    synth = new Tone.PolySynth(Tone.Synth, {
+      oscillator: {
+        type: randomOscType
+      },
+      envelope: {
+        attack: 1.5 + Math.random() * 1, // Variation i attack
+        decay: 0.8 + Math.random() * 0.5,
+        sustain: 0.4 + Math.random() * 0.3,
+        release: 3 + Math.random() * 2
+      }
+    })
+    
+    // Kæd effekter sammen i korrekt rækkefølge: synth -> filter -> reverb -> delay -> destination
+    synth.chain(filter, reverb, delay, Tone.Destination)
+    
+    // Sæt initial volumen
+    synth.volume.value = (volume.value - 1) * 20
     
     console.log('Lydsystem initialiseret')
   } catch (error) {
@@ -124,41 +161,90 @@ const initAudio = async () => {
   }
 }
 
-// Spil akkord baseret på sentiment
+// Spil akkord baseret på sentiment med variation
 const playChord = async () => {
   if (!synth || !isPlaying.value || !toneModule) return
   
   try {
     const Tone = await loadToneJS()
     const score = props.sentimentScore ?? 0
+    const now = Tone.now()
     
-    // Vælg akkord baseret på sentiment
-    let chord
-    let scale = C_MINOR_SCALE // Default til C mol
+    // Vælg akkord-variation baseret på sentiment
+    let chordVariations
+    let scale = C_MINOR_SCALE
     
     if (score <= -0.5) {
-      chord = ['C3', 'Eb3', 'G3'] // C mol
+      chordVariations = CHORD_VARIATIONS.negative
     } else if (score <= 0) {
-      chord = ['Eb3', 'G3', 'Bb3'] // Eb dur (relativ dur til C mol)
+      chordVariations = CHORD_VARIATIONS.neutralNegative
     } else if (score <= 0.5) {
-      chord = ['F3', 'A3', 'C4'] // F dur (subdominant i C dur)
+      chordVariations = CHORD_VARIATIONS.neutralPositive
       scale = C_MAJOR_SCALE
     } else {
-      chord = ['C3', 'E3', 'G3'] // C dur
+      chordVariations = CHORD_VARIATIONS.positive
       scale = C_MAJOR_SCALE
     }
     
-    // Spil akkord med lange noter
-    synth.triggerAttackRelease(chord, '8n')
+    // Vælg akkord med rotation gennem variationer
+    const chord = chordVariations[chordIndex % chordVariations.length]
+    chordIndex++
     
-    // Tilføj enkelte toner fra den valgte skala for mere ambient lyd
-    const randomNote = scale[Math.floor(Math.random() * scale.length)]
-    synth.triggerAttackRelease(randomNote, '2n', Tone.now() + 0.5)
+    // Variation i note-durationer
+    const durations = ['2n', '4n', '1n', '2n.']
+    const chordDuration = durations[Math.floor(Math.random() * durations.length)]
     
-    // Juster filter baseret på sentiment
+    // Spil hovedakkord
+    synth.triggerAttackRelease(chord, chordDuration, now)
+    
+    // Tilføj flere melodiske elementer med variation
+    const numMelodicNotes = 2 + Math.floor(Math.random() * 2) // 2-3 ekstra noter
+    
+    for (let i = 0; i < numMelodicNotes; i++) {
+      const randomNote = scale[Math.floor(Math.random() * scale.length)]
+      const delay = 0.5 + i * 0.8 + Math.random() * 0.5 // Varieret timing
+      const noteDuration = ['4n', '8n', '2n'][Math.floor(Math.random() * 3)]
+      synth.triggerAttackRelease(randomNote, noteDuration, now + delay)
+    }
+    
+    // Tilføj arpeggio nogle gange (30% chance)
+    if (Math.random() < 0.3) {
+      const arpeggioNotes = [...chord].reverse() // Spil akkord omvendt som arpeggio
+      arpeggioNotes.forEach((note, index) => {
+        synth.triggerAttackRelease(note, '8n', now + 1.5 + index * 0.2)
+      })
+    }
+    
+    // Tilføj bass-note nogle gange (40% chance)
+    if (Math.random() < 0.4) {
+      const bassNote = chord[0].replace(/\d/, (match) => {
+        const octave = parseInt(match)
+        return Math.max(1, octave - 1).toString() // En oktav lavere
+      })
+      synth.triggerAttackRelease(bassNote, '1n', now + 0.3)
+    }
+    
+    // Juster filter baseret på sentiment med smooth transition
     if (filter) {
-      const frequency = Math.max(20, Math.min(20000, 1000 + score * 1000))
-      filter.frequency.rampTo(frequency, 0.5)
+      const baseFreq = 500 + score * 2000
+      const variation = (Math.random() - 0.5) * 500 // ±250 Hz variation
+      const frequency = Math.max(200, Math.min(8000, baseFreq + variation))
+      filter.frequency.rampTo(frequency, 1.5)
+    }
+    
+    // Juster reverb baseret på sentiment med variation
+    if (reverb) {
+      const baseWet = 0.6 - score * 0.3
+      const variation = (Math.random() - 0.5) * 0.1
+      const wetAmount = Math.max(0.3, Math.min(0.9, baseWet + variation))
+      reverb.wet.rampTo(wetAmount, 1.5)
+    }
+    
+    // Variation i delay-time
+    if (delay) {
+      const delayTimes = ['4n', '8n', '2n']
+      const randomDelay = delayTimes[Math.floor(Math.random() * delayTimes.length)]
+      delay.delayTime.value = randomDelay
     }
     
   } catch (error) {
@@ -166,7 +252,7 @@ const playChord = async () => {
   }
 }
 
-// Start ambient lyd
+// Start ambient lyd med varieret timing
 const playAmbientSound = async () => {
   if (!isPlaying.value || !toneModule) return
   
@@ -174,12 +260,24 @@ const playAmbientSound = async () => {
     const Tone = await loadToneJS()
     await playChord()
     
-    // Gentag hver 8. takt
-    chordInterval = setInterval(async () => {
-      if (isPlaying.value) {
-        await playChord()
-      }
-    }, 4000) // 4 sekunder mellem akkorder
+    // Funktion til at spille næste akkord med varieret timing
+    const scheduleNextChord = () => {
+      if (!isPlaying.value) return
+      
+      // Variation i timing: 3-6 sekunder
+      const baseDelay = 4000
+      const variation = (Math.random() - 0.5) * 2000 // ±1 sekund
+      const delay = Math.max(3000, Math.min(6000, baseDelay + variation))
+      
+      chordInterval = setTimeout(async () => {
+        if (isPlaying.value) {
+          await playChord()
+          scheduleNextChord() // Planlæg næste akkord
+        }
+      }, delay)
+    }
+    
+    scheduleNextChord()
     
   } catch (error) {
     console.error('Fejl ved afspilning af ambient lyd:', error)
@@ -188,30 +286,46 @@ const playAmbientSound = async () => {
   }
 }
 
+// Cleanup funktion
+const cleanup = () => {
+  if (chordInterval) {
+    clearTimeout(chordInterval)
+    chordInterval = null
+  }
+  
+  // Reset chord index
+  chordIndex = 0
+  
+  // Stop alle aktive noter først
+  if (synth) {
+    synth.releaseAll()
+  }
+  
+  // Dispose alle effekter i korrekt rækkefølge
+  if (delay) {
+    delay.dispose()
+    delay = null
+  }
+  if (reverb) {
+    reverb.dispose()
+    reverb = null
+  }
+  if (filter) {
+    filter.dispose()
+    filter = null
+  }
+  if (synth) {
+    synth.dispose()
+    synth = null
+  }
+}
+
 // Toggle lyd
 const toggleSound = async () => {
   if (isPlaying.value) {
     console.log('Slukker lyd...')
     isPlaying.value = false
-    
-    if (chordInterval) {
-      clearInterval(chordInterval)
-      chordInterval = null
-    }
-    
-    if (synth) {
-      if (synth) synth.dispose()
-      if (delay) delay.dispose()
-      synth = null
-    }
-    if (reverb) {
-      reverb.dispose()
-      reverb = null
-    }
-    if (filter) {
-      filter.dispose()
-      filter = null
-    }
+    cleanup()
   } else {
     try {
       console.log('Starter lydinitialisering...')
@@ -230,6 +344,7 @@ const toggleSound = async () => {
     } catch (error) {
       console.error('Fejl ved start af lyd:', error)
       needsInteraction.value = true
+      cleanup()
     } finally {
       isLoading.value = false
     }
@@ -256,25 +371,16 @@ watch(() => props.sentimentScore, () => {
   } else {
     color.value = '#FBBF24' // gul
   }
+  
+  // Opdater musikken reaktivt når sentiment ændres (hvis den spiller)
+  if (isPlaying.value && synth) {
+    // Spil nyt akkord baseret på opdateret sentiment
+    playChord()
+  }
 })
 
 onUnmounted(() => {
-  if (chordInterval) {
-    clearInterval(chordInterval)
-  }
-  
-  if (synth) {
-    synth.dispose()
-  }
-  if (reverb) {
-    reverb.dispose()
-  }
-  if (delay) {
-    delay.dispose()
-  }
-  if (filter) {
-    filter.dispose()
-  }
+  cleanup()
 })
 </script>
 
@@ -291,9 +397,10 @@ onUnmounted(() => {
 }
 
 .sound-button {
-  width: 3rem;
+  min-width: 8rem;
   height: 3rem;
-  border-radius: 50%;
+  padding: 0 1rem;
+  border-radius: 1.5rem;
   background: rgba(0, 0, 0, 0.3);
   border: 2px solid rgba(255, 255, 255, 0.2);
   color: white;
@@ -303,7 +410,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
 }
 
 .sound-button:hover {
@@ -395,9 +503,10 @@ onUnmounted(() => {
   }
   
   .sound-button {
-    width: 2.5rem;
+    min-width: 7rem;
     height: 2.5rem;
-    font-size: 1rem;
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
   }
   
   .volume-control {
