@@ -24,6 +24,7 @@ This document describes the technical architecture and component structure of Em
   - Generates ambient music with reverb and delay effects
   - Manages volume control
   - Handles browser audio policy (requires user interaction)
+  - Reactively updates music when sentiment changes
 - **Key Features**:
   - Lazy loading of Tone.js library
   - Musical scale changes based on sentiment:
@@ -31,6 +32,19 @@ This document describes the technical architecture and component structure of Em
     - Neutral-negative (-0.5 to 0): Eb major, ambient
     - Neutral-positive (0 to 0.5): F major, flowing
     - Positive (0.5 to 1): C major, uplifting
+  - **High variation system**: Multiple chord variations per sentiment range (4-5 variations each)
+  - **Varied timing**: Dynamic intervals between chords (3-6 seconds) instead of fixed timing
+  - **Melodic elements**: 2-3 additional notes from scale with varied timing
+  - **Arpeggios**: 30% chance of playing chords as arpeggios
+  - **Bass notes**: 40% chance of adding bass notes one octave lower
+  - **Oscillator variation**: Random oscillator types (sine, triangle, sawtooth) on initialization
+  - **Dynamic effects**: Filter frequency and reverb amount vary based on sentiment with random variation
+  - **Varied note durations**: Different note lengths (2n, 4n, 1n, 2n.) for more organic sound
+  - **Correct effect chain**: Properly chained effects (synth → filter → reverb → delay → destination)
+  - **Reverb generation**: Reverb impulse response generated before use for proper effect
+  - **Volume initialization**: Volume set correctly on audio initialization
+  - **Reactive updates**: Music updates automatically when sentimentScore changes during playback
+  - **Improved cleanup**: Proper memory management with correct disposal order
   - Smooth volume transitions
 
 ### SentimentMeter.vue
@@ -55,6 +69,7 @@ This document describes the technical architecture and component structure of Em
   - Responsive design
   - Smooth animations
   - Accessible modal dialog
+  - Proper content padding (16px top/bottom) for better scrollable content spacing
 
 ### HeadlineRotator.vue
 - **Purpose**: Displays rotating article headlines from sentiment analysis

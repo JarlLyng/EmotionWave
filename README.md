@@ -30,14 +30,19 @@ Create a data-driven artwork where the website changes in real-time based on glo
 - **Live headline display**: Rotating article headlines centered on screen, updating every 5 seconds
 
 ### Audio Experience
-- Generative ambient music using Tone.js
+- Generative ambient music using Tone.js with high variation
 - Musical scale changes based on sentiment:
   - Negative (-1 to -0.5): C minor, low tones
   - Neutral-negative (-0.5 to 0): Eb major, ambient
   - Neutral-positive (0 to 0.5): F major, flowing
   - Positive (0.5 to 1): C major, uplifting
+- **Multiple chord variations**: 4-5 different chord progressions per sentiment range
+- **Varied timing**: Dynamic intervals (3-6 seconds) between musical phrases
+- **Rich melodic content**: Additional notes, arpeggios, and bass lines
+- **Dynamic effects**: Filter and reverb adjust based on sentiment with variation
 - Reverb and delay effects for atmospheric sound
 - Volume control with smooth transitions
+- Reactive music updates when sentiment changes during playback
 - User interaction required to start audio (browser policy)
 
 ### Sentiment Analysis
