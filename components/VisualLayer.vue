@@ -139,13 +139,43 @@ const animate = (): void => {
   
   // Opdater partikel positioner baseret på sentiment og mouse
   const positions = particles.geometry.attributes.position.array as Float32Array
+  const colors = particles.geometry.attributes.color.array as Float32Array
   const speed = Math.abs(props.sentimentScore ?? 0) * 0.1
   
   // Calculate time once outside the loop for better performance
   const time = Date.now() * 0.001
+
+  // Bestem target farve baseret på sentiment
+  const score = props.sentimentScore ?? 0
+  let targetR, targetG, targetB
+  
+  if (score <= -0.5) {
+    // 0x4B5563 (Gray 600) -> 0.294, 0.333, 0.388
+    targetR = 0.294; targetG = 0.333; targetB = 0.388
+  } else if (score <= 0) {
+    // 0x3B82F6 (Blue 500) -> 0.231, 0.510, 0.965
+    targetR = 0.231; targetG = 0.510; targetB = 0.965
+  } else if (score <= 0.5) {
+    // 0x60A5FA (Blue 400) -> 0.376, 0.647, 0.980
+    targetR = 0.376; targetG = 0.647; targetB = 0.980
+  } else {
+    // 0xFBBF24 (Amber 400) -> 0.984, 0.749, 0.141
+    targetR = 0.984; targetG = 0.749; targetB = 0.141
+  }
+
+  // LERP factor (jo lavere, jo blødere overgang)
+  const lerpFactor = 0.02
   
   // Batch opdateringer for bedre performance
   for (let i = 0; i < positions.length; i += 3) {
+    // Farve interpolering (smooth transition)
+    // Vi opdaterer kun farverne langsomt mod målet
+    if (Math.abs(colors[i] - targetR) > 0.01 || Math.abs(colors[i+1] - targetG) > 0.01 || Math.abs(colors[i+2] - targetB) > 0.01) {
+       colors[i] += (targetR - colors[i]) * lerpFactor
+       colors[i + 1] += (targetG - colors[i + 1]) * lerpFactor
+       colors[i + 2] += (targetB - colors[i + 2]) * lerpFactor
+    }
+
     // Tilføj bølge-effekt baseret på sentiment
     positions[i] += Math.sin(time + i * 0.1) * speed
     positions[i + 1] += Math.cos(time + i * 0.1) * speed
@@ -160,6 +190,7 @@ const animate = (): void => {
   }
   
   particles.geometry.attributes.position.needsUpdate = true
+  particles.geometry.attributes.color.needsUpdate = true
   renderer.render(scene, camera)
   
   animationId = requestAnimationFrame(animate)
@@ -213,31 +244,6 @@ watch(() => props.sentimentScore, async () => {
   if (!THREE) {
     await loadThreeJS()
   }
-  
-  if (!THREE || !particles) return
-  
-  const colors = particles.geometry.attributes.color.array as Float32Array
-  const score = props.sentimentScore ?? 0
-  
-  // Opdater farver baseret på sentiment
-  for (let i = 0; i < colors.length; i += 3) {
-    let color
-    if (score <= -0.5) {
-      color = new THREE.Color(0x4B5563)
-    } else if (score <= 0) {
-      color = new THREE.Color(0x3B82F6)
-    } else if (score <= 0.5) {
-      color = new THREE.Color(0x60A5FA)
-    } else {
-      color = new THREE.Color(0xFBBF24)
-    }
-    
-    colors[i] = color.r
-    colors[i + 1] = color.g
-    colors[i + 2] = color.b
-  }
-  
-  particles.geometry.attributes.color.needsUpdate = true
 })
 
 // Throttled resize handler
@@ -297,6 +303,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  transition: background-color 2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .loading-overlay {

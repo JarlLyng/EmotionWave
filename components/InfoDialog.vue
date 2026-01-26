@@ -69,7 +69,8 @@
               <div class="space-y-4">
                 <p class="text-white/70 text-base leading-relaxed">
                   EmotionWave continuously analyzes news articles from global sources every 30 seconds. 
-                  Using AI-based sentiment analysis, it calculates a sentiment score ranging from -1 (negative) to +1 (positive).
+                  Using state-of-the-art AI models (Hugging Face Transformers), it performs deep semantic 
+                  analysis to calculate a precise sentiment score ranging from -1 (negative) to +1 (positive).
                 </p>
                 <p class="text-white/70 text-base leading-relaxed">
                   This score then influences all elements on the site: particles change color and movement, 
@@ -94,10 +95,12 @@
                   that change color and movement based on sentiment. The particles respond to mouse movements 
                   and create a living, interactive visual experience.
                 </p>
+                <br />
                 <p class="text-white/70 text-base leading-relaxed">
                   <strong class="text-white/90">Sentiment meter:</strong> A visual indicator showing the current 
                   global mood. The meter displays how positive or negative the world's mood is right now.
                 </p>
+                <br />
                 <p class="text-white/70 text-base leading-relaxed">
                   <strong class="text-white/90">Ambient music:</strong> Generative music that shifts between minor and major scales 
                   based on sentiment. The music adapts automatically and creates an atmospheric audio experience 
@@ -119,9 +122,9 @@
                 </p>
                 <p class="text-white/70 text-base leading-relaxed">
                   Additionally, the system can aggregate data from <strong class="text-white/90">NewsAPI</strong> 
-                  (optional, requires API key) and <strong class="text-white/90">Reddit</strong> (optional) 
-                  for a more comprehensive view of global sentiment. All sources are weighted and combined 
-                  to provide the most accurate sentiment score.
+                   and <strong class="text-white/90">Reddit</strong> 
+                  for a more comprehensive view of global sentiment. We use advanced Natural Language Processing 
+                  to understand the true emotion behind headlines, not just keyword matching.
                 </p>
                 <p class="text-white/70 text-base leading-relaxed">
                   The data is continuously analyzed, and sentiment scores are updated every 30 seconds to 
@@ -134,17 +137,6 @@
           <!-- Footer -->
           <div class="footer-section bg-white/5">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-sm text-white/50">
-              <div class="flex items-center gap-6">
-                <span class="flex items-center gap-2">
-                  Nuxt 3
-                </span>
-                <span class="flex items-center gap-2">
-                  Three.js
-                </span>
-                <span class="flex items-center gap-2">
-                  Tone.js
-                </span>
-              </div>
               <p class="text-white/30">Built with Nuxt 3, Three.js and Tone.js</p>
             </div>
           </div>
