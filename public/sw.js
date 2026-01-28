@@ -41,7 +41,7 @@ self.addEventListener('install', (event) => {
               // Match both relative paths (_nuxt/...) and absolute paths (/EmotionWave/_nuxt/...)
               const nuxtAssetRegex = /(?:href|src)=["']([^"']*\/_nuxt\/[^"']+\.(js|css))["']/gi
               const matches = [...new Set(Array.from(html.matchAll(nuxtAssetRegex), m => m[1]))]
-              
+
               // Normalize paths - ensure they're absolute URLs
               const nuxtUrls = matches.map(path => {
                 try {
@@ -67,7 +67,7 @@ self.addEventListener('install', (event) => {
               if (nuxtUrls.length > 0) {
                 console.log('Precaching _nuxt assets:', nuxtUrls.length)
                 await Promise.all(
-                  nuxtUrls.map(url => 
+                  nuxtUrls.map(url =>
                     fetch(url)
                       .then(res => res.ok ? cache.put(url, res.clone()) : null)
                       .catch(() => null)
@@ -87,25 +87,28 @@ self.addEventListener('install', (event) => {
 
 // Fetch event - cache strategy: network first, fallback to cache
 self.addEventListener('fetch', (event) => {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') return
+
   const url = new URL(event.request.url)
-  
+
   // Skip cross-origin requests
   if (url.origin !== location.origin) {
     return
   }
-  
+
   // Cache strategy: stale-while-revalidate for static assets, network-first for API
   event.respondWith(
     (async () => {
       const cachedResponse = await caches.match(event.request)
-      
+
       // For _nuxt assets and static files: stale-while-revalidate
       // This provides instant loading with background updates
-      if (url.pathname.includes('/_nuxt/') || 
-          event.request.destination === 'script' ||
-          event.request.destination === 'style' ||
-          event.request.destination === 'image' ||
-          event.request.destination === 'font') {
+      if (url.pathname.includes('/_nuxt/') ||
+        event.request.destination === 'script' ||
+        event.request.destination === 'style' ||
+        event.request.destination === 'image' ||
+        event.request.destination === 'font') {
         // Return cached version immediately if available (stale-while-revalidate)
         if (cachedResponse) {
           // Update cache in background (non-blocking)
@@ -122,7 +125,7 @@ self.addEventListener('fetch', (event) => {
             })
           return cachedResponse
         }
-        
+
         // If not cached, fetch and cache (network-first with cache fallback)
         try {
           const response = await fetch(event.request)
@@ -136,13 +139,13 @@ self.addEventListener('fetch', (event) => {
         } catch (error) {
           // If network fails and no cache, return error
           console.warn('Failed to fetch and no cache available:', event.request.url)
-          return new Response('Resource not available offline', { 
+          return new Response('Resource not available offline', {
             status: 503,
             headers: { 'Content-Type': 'text/plain' }
           })
         }
       }
-      
+
       // For API requests: network-first
       if (url.pathname.includes('/api/')) {
         try {
@@ -156,7 +159,7 @@ self.addEventListener('fetch', (event) => {
           return new Response('', { status: 503 })
         }
       }
-      
+
       // For navigation requests: network-first with offline fallback
       if (event.request.destination === 'document') {
         try {
@@ -167,7 +170,7 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse || caches.match(`${basePath}/`) || new Response('', { status: 503 })
         }
       }
-      
+
       // Default: network-first
       try {
         return await fetch(event.request)

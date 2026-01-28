@@ -58,12 +58,12 @@ const getConfig = () => {
   const newsApiKey = config.newsApiKey || process.env.NEWS_API_KEY || null
 
   // Log API key availability (without exposing the key itself)
-  console.log('API keys status:', {
-    hasHuggingFaceKey: !!huggingFaceKey,
-    hasNewsApiKey: !!newsApiKey,
-    huggingFaceKeyLength: huggingFaceKey ? huggingFaceKey.length : 0,
-    newsApiKeyLength: newsApiKey ? newsApiKey.length : 0
-  })
+  // console.log('API keys status:', {
+  //   hasHuggingFaceKey: !!huggingFaceKey,
+  //   hasNewsApiKey: !!newsApiKey,
+  //   huggingFaceKeyLength: huggingFaceKey ? huggingFaceKey.length : 0,
+  //   newsApiKeyLength: newsApiKey ? newsApiKey.length : 0
+  // })
 
   return {
     newsApiKey,
@@ -347,9 +347,8 @@ function parseHuggingFaceSentiment(data: any): number {
   }
 
   // If still an array, get first element
-  if (Array.isArray(results)) {
-    results = results[0]
-  }
+  // REMOVED INCORRECT LOGIC: if (Array.isArray(results)) { results = results[0] }
+  // We want to keep the array if it contains objects, as it might be a list of labels
 
   // Now results should be an object or array of sentiment objects
   let sentimentArray: Array<{ label: string, score: number }> | null = null
@@ -378,11 +377,23 @@ function parseHuggingFaceSentiment(data: any): number {
     const label = item.label?.toUpperCase() || ''
     const score = item.score || 0
 
+    // Handle standard labels (POSITIVE, NEGATIVE, NEUTRAL)
     if (label.includes('POSITIVE') || label.includes('POS')) {
       positiveScore = score
     } else if (label.includes('NEGATIVE') || label.includes('NEG')) {
       negativeScore = score
     } else if (label.includes('NEUTRAL') || label.includes('NEU')) {
+      neutralScore = score
+    }
+    // Handle LABEL_0/1/2 format (common in twitter-roberta-base-sentiment)
+    // LABEL_0: Negative
+    // LABEL_1: Neutral 
+    // LABEL_2: Positive
+    else if (label === 'LABEL_2') {
+      positiveScore = score
+    } else if (label === 'LABEL_0') {
+      negativeScore = score
+    } else if (label === 'LABEL_1') {
       neutralScore = score
     }
   })
@@ -678,13 +689,9 @@ async function aggregateSentiment(): Promise<SentimentData> {
     const redditArticles = await fetchRedditSentiment()
     if (redditArticles.length > 0) {
       // Reddit provides valuable social sentiment - use full weight but limit to top posts
-      // Sort by upvotes and take top 20 most engaged posts for better signal
+      // Posts are already weighted by upvotes in fetchRedditSentiment, so we can just take the first ones
+      // or if we want to ensure we get the most impactful ones, we could sort by absolute sentiment intensity
       const topRedditPosts = redditArticles
-        .sort((a, b) => {
-          // Extract upvotes from URL or use sentiment as proxy for engagement
-          // In practice, we'll use all posts but they're already weighted by upvotes in fetchRedditSentiment
-          return 0 // Already processed in fetchRedditSentiment
-        })
         .slice(0, 20) // Top 20 posts
 
       allArticles.push(...topRedditPosts)

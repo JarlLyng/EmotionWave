@@ -9,6 +9,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
+import type { Scene, PerspectiveCamera, WebGLRenderer, Points } from 'three'
 
 const props = defineProps<{
   sentimentScore?: number
@@ -24,10 +25,10 @@ const getSentimentClass = computed(() => {
 
 const container = ref<HTMLDivElement | null>(null)
 const isLoaded = ref(false)
-let scene: THREE.Scene | null = null
-let camera: THREE.PerspectiveCamera | null = null
-let renderer: THREE.WebGLRenderer | null = null
-let particles: THREE.Points | null = null
+let scene: Scene | null = null
+let camera: PerspectiveCamera | null = null
+let renderer: WebGLRenderer | null = null
+let particles: Points | null = null
 let mousePosition = { x: 0, y: 0 }
 let animationId: number | null = null
 let threeModule: typeof import('three') | null = null
@@ -81,6 +82,8 @@ const initScene = async () => {
 
 // Opret partikler med optimeret antal
 const createParticles = (THREE: typeof import('three')) => {
+  if (!scene) return
+  
   const particleCount = window.innerWidth < 768 ? 1000 : 2000 // Færre partikler på mobile
   const geometry = new THREE.BufferGeometry()
   const positions = new Float32Array(particleCount * 3)
@@ -291,7 +294,11 @@ onUnmounted(() => {
   }
   if (particles) {
     particles.geometry.dispose()
-    particles.material.dispose()
+    if (Array.isArray(particles.material)) {
+      particles.material.forEach(m => m.dispose())
+    } else {
+      particles.material.dispose()
+    }
   }
 })
 </script>

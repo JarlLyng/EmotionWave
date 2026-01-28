@@ -348,6 +348,8 @@ const cleanup = () => {
 
 // Toggle lyd
 const toggleSound = async () => {
+  if (isLoading.value) return 
+
   if (isPlaying.value) {
     console.log('Slukker lyd...')
     isPlaying.value = false

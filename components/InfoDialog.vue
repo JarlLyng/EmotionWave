@@ -3,6 +3,7 @@
     <!-- Info Button -->
     <button 
       @click="isOpen = true"
+      type="button"
       class="fixed top-8 right-8 p-4 rounded-full bg-white/10 transition-all duration-300 backdrop-blur-md shadow-xl z-50"
       aria-label="Show information"
     >
@@ -24,15 +25,19 @@
         v-if="isOpen"
         class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-8 z-50"
         @click="isOpen = false"
+        @keydown.esc="isOpen = false"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dialog-title"
       >
         <div 
           class="dialog-container bg-white/5 backdrop-blur-2xl rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden"
           @click.stop
         >
-          <!-- Header -->
+            <!-- Header -->
           <div class="flex justify-between items-start pb-6">
             <div class="space-y-3">
-              <h2 class="text-4xl font-light text-white tracking-tight">
+              <h2 id="dialog-title" class="text-4xl font-light text-white tracking-tight">
                 About EmotionWave
               </h2>
               <p class="text-white/60 text-lg font-light">
@@ -41,6 +46,7 @@
             </div>
             <button 
               @click="isOpen = false"
+              type="button"
               class="text-white/40 transition-colors p-2 rounded-full"
               aria-label="Close dialog"
             >
@@ -147,9 +153,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 
 const isOpen = ref(false)
+
+// Close on escape key
+const handleEscape = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && isOpen.value) {
+    isOpen.value = false
+  }
+}
+
+watch(isOpen, (newValue) => {
+  if (newValue) {
+    window.addEventListener('keydown', handleEscape)
+  } else {
+    window.removeEventListener('keydown', handleEscape)
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEscape)
+})
 </script>
 
 <style scoped>
