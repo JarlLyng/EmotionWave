@@ -527,7 +527,9 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .sound-controls {
     bottom: 1rem;
+    left: 1rem;
     right: 1rem;
+    justify-content: flex-start;
   }
   
   .sound-button {

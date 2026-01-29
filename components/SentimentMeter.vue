@@ -159,16 +159,19 @@ const getMeterColor = computed(() => {
   50% { opacity: 1; }
 }
 
-/* Mobile responsiveness */
+/* Mobile responsiveness – stables over lydknappen */
 @media (max-width: 768px) {
   .sentiment-meter {
-    bottom: 2rem;
-    left: 2rem;
+    bottom: 5rem; /* Plads til lydknap (ca. 42px + margin) under meter */
+    left: 1rem;
+    right: 1rem;
     padding: 0.75rem;
+    max-width: calc(100vw - 2rem);
   }
   
   .meter-container {
-    width: 200px;
+    width: 100%;
+    max-width: 200px;
   }
 }
 </style> 
