@@ -69,6 +69,7 @@ const getMeterColor = computed(() => {
   position: fixed;
   bottom: 2rem;
   left: 2rem;
+  min-width: 220px;
   background-color: rgba(0, 0, 0, 0.8);
   padding: 1rem 1rem 0.3rem 1rem;
   border-radius: 1.5rem;
@@ -110,6 +111,7 @@ const getMeterColor = computed(() => {
 .meter-labels {
   display: flex;
   justify-content: space-between;
+  gap: 0.5rem;
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.7);
   margin-bottom: 0.5rem;
@@ -175,6 +177,7 @@ const getMeterColor = computed(() => {
     bottom: 5rem; /* Plads til lydknap (ca. 42px + margin) under meter */
     left: 1rem;
     right: 1rem;
+    min-width: 0;
     padding: 0.75rem 1rem;
     max-width: calc(100vw - 2rem);
     width: calc(100vw - 2rem);
