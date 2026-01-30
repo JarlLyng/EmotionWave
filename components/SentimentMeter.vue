@@ -5,7 +5,7 @@
         <div 
           class="meter-fill" 
           :style="{ 
-            width: `${(sentimentScore + 1) * 50}%`,
+            width: `${meterFillWidth}%`,
             backgroundColor: getMeterColor
           }"
         ></div>
@@ -49,6 +49,13 @@ const sentimentScore = computed(() => {
   return props.score
 })
 
+// Bredde 0–100%; minimum 8% så der altid er en synlig farve (rød ved negativ)
+const MIN_VISIBLE_PERCENT = 8
+const meterFillWidth = computed(() => {
+  const raw = (sentimentScore.value + 1) * 50 // -1 → 0%, 0 → 50%, 1 → 100%
+  return Math.max(MIN_VISIBLE_PERCENT, Math.min(100, raw))
+})
+
 const getMeterColor = computed(() => {
   if (typeof props.score !== 'number') return '#ff4444'
   if (props.score < 0) return '#ff4444'
@@ -69,6 +76,7 @@ const getMeterColor = computed(() => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   user-select: none;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
 }
 
 .meter-container,
@@ -80,7 +88,9 @@ const getMeterColor = computed(() => {
 }
 
 .meter-container {
-  width: 250px;
+  width: 100%;
+  min-width: 0;
+  max-width: 250px;
 }
 
 .meter-track {
@@ -159,19 +169,20 @@ const getMeterColor = computed(() => {
   50% { opacity: 1; }
 }
 
-/* Mobile responsiveness – stables over lydknappen */
+/* Mobile responsiveness – stables over lydknappen, indhold fylder boksen */
 @media (max-width: 768px) {
   .sentiment-meter {
     bottom: 5rem; /* Plads til lydknap (ca. 42px + margin) under meter */
     left: 1rem;
     right: 1rem;
-    padding: 0.75rem;
+    padding: 0.75rem 1rem;
     max-width: calc(100vw - 2rem);
+    width: calc(100vw - 2rem);
   }
   
   .meter-container {
     width: 100%;
-    max-width: 200px;
+    max-width: none;
   }
 }
 </style> 
