@@ -8,7 +8,7 @@ export default defineEventHandler((event) => {
   const config = useRuntimeConfig()
   const baseURL = config.app?.baseURL || '/'
   const siteUrl = config.public?.siteUrl || 
-                  'https://jarllyng.github.io/EmotionWave/'
+                  'https://emotionwave.iamjarl.com/'
   
   // Build absolute URLs for icons to ensure they work correctly
   const buildAbsoluteURL = (path: string) => {

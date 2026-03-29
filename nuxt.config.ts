@@ -47,9 +47,9 @@ export default defineNuxtConfig({
         { property: 'og:title', content: 'EmotionWave - A Living Website That Reacts to the World\'s Mood' },
         { property: 'og:description', content: 'An interactive web experience that visualizes global sentiment in real-time through dynamic visuals and ambient sound.' },
         { property: 'og:type', content: 'website' },
-        { property: 'og:url', content: process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/' },
+        { property: 'og:url', content: process.env.NUXT_PUBLIC_SITE_URL || 'https://emotionwave.iamjarl.com/' },
         { property: 'og:image', content: (() => {
-          const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/'
+          const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://emotionwave.iamjarl.com/'
           // Remove trailing slash and ensure single path separator
           const cleanSiteUrl = siteUrl.replace(/\/$/, '')
           return `${cleanSiteUrl}/og-image.png`
@@ -64,7 +64,7 @@ export default defineNuxtConfig({
         { name: 'twitter:title', content: 'EmotionWave - A Living Website That Reacts to the World\'s Mood' },
         { name: 'twitter:description', content: 'An interactive web experience that visualizes global sentiment in real-time through dynamic visuals and ambient sound.' },
         { name: 'twitter:image', content: (() => {
-          const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/'
+          const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://emotionwave.iamjarl.com/'
           // Remove trailing slash and ensure single path separator
           const cleanSiteUrl = siteUrl.replace(/\/$/, '')
           return `${cleanSiteUrl}/og-image.png`
@@ -74,7 +74,7 @@ export default defineNuxtConfig({
       link: (() => {
         // Generate links directly in config for SSR output
         // This ensures they're present in static HTML for SEO
-        const baseURL = process.env.NUXT_PUBLIC_BASE_URL || (process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/')
+        const baseURL = process.env.NUXT_PUBLIC_BASE_URL || (process.env.NODE_ENV === 'production' ? '/' : '/')
         const joinURL = (path: string) => {
           // Handle both relative and absolute baseURLs
           if (baseURL.startsWith('http://') || baseURL.startsWith('https://')) {
@@ -93,7 +93,7 @@ export default defineNuxtConfig({
           return `${base}${p}`
         }
         
-        const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://jarllyng.github.io/EmotionWave/'
+        const siteUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://emotionwave.iamjarl.com/'
         
         return [
           // Standard favicon (ICO format - contains 16x16 and 32x32)

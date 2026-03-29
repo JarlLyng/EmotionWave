@@ -1,14 +1,16 @@
 <template>
   <div class="sound-controls">
-    <button 
-      @click="toggleSound" 
+    <button
+      @click="toggleSound"
       class="sound-button"
-      :class="{ 
+      :class="{
         'is-playing': isPlaying,
         'is-loading': isLoading,
         'needs-interaction': needsInteraction
       }"
       :title="getButtonTitle"
+      :aria-pressed="isPlaying"
+      aria-label="Toggle ambient music"
     >
       <span class="sound-icon">
         <span v-if="isLoading" class="loading-spinner"></span>

@@ -7,7 +7,7 @@ import { defineEventHandler } from 'h3'
 export default defineEventHandler((event) => {
   const config = useRuntimeConfig()
   const siteUrl = config.public?.siteUrl || 
-                  'https://jarllyng.github.io/EmotionWave/'
+                  'https://emotionwave.iamjarl.com/'
   
   const baseURL = new URL(siteUrl)
   const domain = baseURL.origin + baseURL.pathname.replace(/\/$/, '')
