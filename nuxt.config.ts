@@ -116,6 +116,26 @@ export default defineNuxtConfig({
           src: 'https://umami-iamjarl.vercel.app/script.js',
           defer: true,
           'data-website-id': 'd85d4bee-9f37-4812-9337-58a3cca2cc6f'
+        },
+        {
+          type: 'application/ld+json',
+          innerHTML: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebApplication',
+            name: 'EmotionWave',
+            url: 'https://emotionwave.iamjarl.com/',
+            description: 'An interactive web experience that visualizes global sentiment in real-time through dynamic visuals and ambient sound, powered by live news analysis.',
+            applicationCategory: 'EntertainmentApplication',
+            operatingSystem: 'Web Browser',
+            offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+            author: { '@type': 'Person', name: 'Jarl Lyng', url: 'https://iamjarl.com' },
+            featureList: [
+              'Real-time global sentiment visualization',
+              'Live news analysis from GDELT, NewsAPI, and Reddit',
+              'Dynamic visuals and ambient sound',
+              'Interactive data art experience'
+            ]
+          })
         }
       ]
     }
