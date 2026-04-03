@@ -1,5 +1,5 @@
 <template>
-  <div class="visual-layer" :class="getSentimentClass">
+  <div class="visual-layer">
     <div ref="container" class="w-full h-full"></div>
     <div v-if="!isLoaded && !initError" class="loading-overlay">
       <div class="loading-spinner"></div>
@@ -11,48 +11,97 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
-import type { Scene, PerspectiveCamera, WebGLRenderer, Points } from 'three'
+import { ref, onMounted, watch, onUnmounted } from 'vue'
+import type {
+  Scene, PerspectiveCamera, WebGLRenderer, Points, Color, FogExp2,
+} from 'three'
 
 const props = defineProps<{
   sentimentScore?: number
 }>()
 
-const getSentimentClass = computed(() => {
-  const score = props.sentimentScore ?? 0
-  if (score <= -0.5) return 'sentiment-negative'
-  if (score <= 0) return 'sentiment-neutral-negative'
-  if (score <= 0.5) return 'sentiment-neutral-positive'
-  return 'sentiment-positive'
-})
-
 const container = ref<HTMLDivElement | null>(null)
 const isLoaded = ref(false)
 const initError = ref(false)
+
 let scene: Scene | null = null
 let camera: PerspectiveCamera | null = null
 let renderer: WebGLRenderer | null = null
 let particles: Points | null = null
+let composer: any = null
+let bloomPass: any = null
 let mousePosition = { x: 0, y: 0 }
 let animationId: number | null = null
 let threeModule: typeof import('three') | null = null
-let THREE: typeof import('three') | null = null
 let prefersReducedMotion = false
 
-// Lazy load Three.js
+// Per-particle random phase offsets for organic flow
+let particlePhases: Float32Array | null = null
+
+// Smooth color/background targets
+let currentTargetR = 0.18
+let currentTargetG = 0.42
+let currentTargetB = 0.75
+let colorsNeedUpdate = true
+
+// Scene background lerping
+let currentBgR = 0.02
+let currentBgG = 0.05
+let currentBgB = 0.09
+let targetBgR = 0.02
+let targetBgG = 0.05
+let targetBgB = 0.09
+
+// Bloom target
+let targetBloomStrength = 1.2
+
+const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+
+// ─── Color gradient ──────────────────────────────────────────────────────────
+
+const colorAnchors = [
+  { s: -1.0, r: 0.15, g: 0.10, b: 0.25 }, // deep indigo
+  { s: -0.5, r: 0.20, g: 0.25, b: 0.45 }, // slate blue
+  { s:  0.0, r: 0.18, g: 0.42, b: 0.75 }, // cool blue
+  { s:  0.5, r: 0.15, g: 0.65, b: 0.70 }, // teal/cyan
+  { s:  1.0, r: 0.95, g: 0.75, b: 0.20 }, // warm gold
+]
+
+function sentimentToColor(score: number): [number, number, number] {
+  const clamped = Math.max(-1, Math.min(1, score))
+  let lower = colorAnchors[0]
+  let upper = colorAnchors[colorAnchors.length - 1]
+
+  for (let i = 0; i < colorAnchors.length - 1; i++) {
+    if (clamped >= colorAnchors[i].s && clamped <= colorAnchors[i + 1].s) {
+      lower = colorAnchors[i]
+      upper = colorAnchors[i + 1]
+      break
+    }
+  }
+
+  const t = upper.s === lower.s ? 0 : (clamped - lower.s) / (upper.s - lower.s)
+  return [
+    lower.r + (upper.r - lower.r) * t,
+    lower.g + (upper.g - lower.g) * t,
+    lower.b + (upper.b - lower.b) * t,
+  ]
+}
+
+function mapRange(value: number, inMin: number, inMax: number, outMin: number, outMax: number): number {
+  return outMin + (outMax - outMin) * ((value - inMin) / (inMax - inMin))
+}
+
+// ─── Lazy load Three.js ──────────────────────────────────────────────────────
+
 const loadThreeJS = async () => {
   if (!threeModule) {
     threeModule = await import('three')
-    THREE = threeModule
   }
   return threeModule
 }
 
-// Track current target color to avoid recalculating per-particle
-let currentTargetR = 0.231
-let currentTargetG = 0.510
-let currentTargetB = 0.965
-let colorsNeedUpdate = true
+// ─── Init ────────────────────────────────────────────────────────────────────
 
 const initScene = async () => {
   if (!container.value) return
@@ -60,7 +109,13 @@ const initScene = async () => {
   try {
     const THREE = await loadThreeJS()
 
-    // Check reduced motion preference
+    // Postprocessing imports (lazy)
+    const { EffectComposer } = await import('three/examples/jsm/postprocessing/EffectComposer.js')
+    const { RenderPass } = await import('three/examples/jsm/postprocessing/RenderPass.js')
+    const { UnrealBloomPass } = await import('three/examples/jsm/postprocessing/UnrealBloomPass.js')
+    const { OutputPass } = await import('three/examples/jsm/postprocessing/OutputPass.js')
+
+    // Reduced motion
     if (typeof window !== 'undefined') {
       prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
       window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', (e) => {
@@ -68,8 +123,12 @@ const initScene = async () => {
       })
     }
 
+    // Scene + fog
     scene = new THREE.Scene()
+    scene.background = new THREE.Color(currentBgR, currentBgG, currentBgB)
+    scene.fog = new THREE.FogExp2(0x020509, 0.015)
 
+    // Camera
     camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
@@ -78,16 +137,36 @@ const initScene = async () => {
     )
     camera.position.z = 50
 
+    // Renderer (alpha: false — we control background via scene)
     renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true,
+      antialias: !isMobile,
+      alpha: false,
       powerPreference: 'high-performance',
     })
     renderer.setSize(window.innerWidth, window.innerHeight)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2))
+    renderer.toneMapping = THREE.ACESFilmicToneMapping
+    renderer.toneMappingExposure = 1.0
     container.value.appendChild(renderer.domElement)
 
+    // Postprocessing
+    composer = new EffectComposer(renderer)
+    composer.addPass(new RenderPass(scene, camera))
+
+    bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      isMobile ? 0.9 : 1.5, // strength
+      0.4,                    // radius
+      0.85                    // threshold
+    )
+    composer.addPass(bloomPass)
+    composer.addPass(new OutputPass())
+
+    // Particles
     createParticles(THREE)
+
+    // Set initial sentiment color
+    updateSentimentTargets(props.sentimentScore ?? 0)
 
     isLoaded.value = true
     animate()
@@ -97,13 +176,18 @@ const initScene = async () => {
   }
 }
 
+// ─── Particles ───────────────────────────────────────────────────────────────
+
 const createParticles = (THREE: typeof import('three')) => {
   if (!scene) return
 
-  const particleCount = window.innerWidth < 768 ? 1000 : 2000
+  const particleCount = isMobile ? 1000 : 2000
   const geometry = new THREE.BufferGeometry()
   const positions = new Float32Array(particleCount * 3)
   const colors = new Float32Array(particleCount * 3)
+
+  // Phase offsets for organic movement
+  particlePhases = new Float32Array(particleCount * 3)
 
   for (let i = 0; i < particleCount; i++) {
     positions[i * 3] = (Math.random() - 0.5) * 100
@@ -113,54 +197,88 @@ const createParticles = (THREE: typeof import('three')) => {
     colors[i * 3] = currentTargetR
     colors[i * 3 + 1] = currentTargetG
     colors[i * 3 + 2] = currentTargetB
+
+    particlePhases[i * 3] = Math.random() * Math.PI * 2
+    particlePhases[i * 3 + 1] = Math.random() * Math.PI * 2
+    particlePhases[i * 3 + 2] = Math.random() * Math.PI * 2
   }
 
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
 
   const material = new THREE.PointsMaterial({
-    size: 0.5,
+    size: isMobile ? 1.5 : 2.0,
     vertexColors: true,
     transparent: true,
-    opacity: 0.8,
+    opacity: 0.9,
     sizeAttenuation: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
   })
 
   particles = new THREE.Points(geometry, material)
   scene.add(particles)
 }
 
+// ─── Animation loop ──────────────────────────────────────────────────────────
+
 const animate = (): void => {
-  if (!particles || !renderer || !scene || !camera) {
+  if (!particles || !composer || !scene || !camera) {
     animationId = null
     return
   }
 
-  // Reduced motion: only render, skip movement
+  const score = props.sentimentScore ?? 0
+
+  // ── Organic particle movement ──
   if (!prefersReducedMotion) {
-    particles.rotation.x += 0.0005
-    particles.rotation.y += 0.0005
+    particles.rotation.x += 0.0003
+    particles.rotation.y += 0.0004
 
     const positions = particles.geometry.attributes.position.array as Float32Array
-    const speed = Math.abs(props.sentimentScore ?? 0) * 0.1
-    const time = Date.now() * 0.001
+    const time = Date.now() * 0.0005
+    const sentimentSpeed = 0.02 + Math.abs(score) * 0.04
 
-    for (let i = 0; i < positions.length; i += 3) {
-      positions[i] += Math.sin(time + i * 0.1) * speed
-      positions[i + 1] += Math.cos(time + i * 0.1) * speed
-      positions[i] += (Math.random() - 0.5) * 0.05
-      positions[i + 1] += (Math.random() - 0.5) * 0.05
-      positions[i] = Math.max(-50, Math.min(50, positions[i]))
-      positions[i + 1] = Math.max(-50, Math.min(50, positions[i + 1]))
+    if (particlePhases) {
+      for (let i = 0; i < positions.length; i += 3) {
+        const px = particlePhases[i]
+        const py = particlePhases[i + 1]
+        const pz = particlePhases[i + 2]
+
+        // Three octaves of sine at incommensurate frequencies (pseudo-Perlin)
+        const nx = Math.sin(time * 0.7 + px) * 0.5
+                 + Math.sin(time * 1.3 + px * 2.1) * 0.3
+                 + Math.sin(time * 2.9 + px * 0.7) * 0.2
+
+        const ny = Math.sin(time * 0.5 + py) * 0.5
+                 + Math.sin(time * 1.1 + py * 1.7) * 0.3
+                 + Math.sin(time * 2.3 + py * 1.3) * 0.2
+
+        positions[i] += nx * sentimentSpeed
+        positions[i + 1] += ny * sentimentSpeed
+
+        // Z-axis drift for depth (skip on mobile)
+        if (!isMobile) {
+          positions[i + 2] += Math.sin(time * 0.3 + pz) * sentimentSpeed * 0.3
+        }
+
+        // Soft wrapping instead of hard clamp
+        if (positions[i] > 55) positions[i] -= 110
+        else if (positions[i] < -55) positions[i] += 110
+        if (positions[i + 1] > 55) positions[i + 1] -= 110
+        else if (positions[i + 1] < -55) positions[i + 1] += 110
+        if (positions[i + 2] > 55) positions[i + 2] -= 110
+        else if (positions[i + 2] < -55) positions[i + 2] += 110
+      }
+
+      particles.geometry.attributes.position.needsUpdate = true
     }
-
-    particles.geometry.attributes.position.needsUpdate = true
   }
 
-  // Only update colors when sentiment actually changes
+  // ── Color lerp ──
   if (colorsNeedUpdate) {
     const colors = particles.geometry.attributes.color.array as Float32Array
-    const lerpFactor = 0.02
+    const lerpFactor = 0.015
     let stillLerping = false
 
     for (let i = 0; i < colors.length; i += 3) {
@@ -168,7 +286,7 @@ const animate = (): void => {
       const dg = currentTargetG - colors[i + 1]
       const db = currentTargetB - colors[i + 2]
 
-      if (Math.abs(dr) > 0.01 || Math.abs(dg) > 0.01 || Math.abs(db) > 0.01) {
+      if (Math.abs(dr) > 0.005 || Math.abs(dg) > 0.005 || Math.abs(db) > 0.005) {
         colors[i] += dr * lerpFactor
         colors[i + 1] += dg * lerpFactor
         colors[i + 2] += db * lerpFactor
@@ -180,26 +298,54 @@ const animate = (): void => {
     if (!stillLerping) colorsNeedUpdate = false
   }
 
-  renderer.render(scene, camera)
+  // ── Background + fog lerp ──
+  const bgLerp = 0.005
+  currentBgR += (targetBgR - currentBgR) * bgLerp
+  currentBgG += (targetBgG - currentBgG) * bgLerp
+  currentBgB += (targetBgB - currentBgB) * bgLerp
+
+  if (scene.background && (scene.background as Color).isColor) {
+    (scene.background as Color).setRGB(currentBgR, currentBgG, currentBgB)
+  }
+  if (scene.fog) {
+    (scene.fog as FogExp2).color.setRGB(currentBgR, currentBgG, currentBgB)
+  }
+
+  // ── Bloom lerp ──
+  if (bloomPass) {
+    bloomPass.strength += (targetBloomStrength - bloomPass.strength) * 0.01
+  }
+
+  // ── Render ──
+  composer.render()
   animationId = requestAnimationFrame(animate)
 }
 
-// Update target color when sentiment changes
-watch(() => props.sentimentScore, () => {
-  const score = props.sentimentScore ?? 0
-  if (score <= -0.5) {
-    currentTargetR = 0.294; currentTargetG = 0.333; currentTargetB = 0.388
-  } else if (score <= 0) {
-    currentTargetR = 0.231; currentTargetG = 0.510; currentTargetB = 0.965
-  } else if (score <= 0.5) {
-    currentTargetR = 0.376; currentTargetG = 0.647; currentTargetB = 0.980
-  } else {
-    currentTargetR = 0.984; currentTargetG = 0.749; currentTargetB = 0.141
-  }
+// ─── Sentiment update ────────────────────────────────────────────────────────
+
+function updateSentimentTargets(score: number) {
+  const [r, g, b] = sentimentToColor(score)
+  currentTargetR = r
+  currentTargetG = g
+  currentTargetB = b
   colorsNeedUpdate = true
+
+  // Background = 12% brightness of particle color
+  targetBgR = r * 0.12
+  targetBgG = g * 0.12
+  targetBgB = b * 0.12
+
+  // Bloom: dimmer for negative, brighter for positive
+  const baseStrength = mapRange(score, -1, 1, 0.8, 2.0)
+  targetBloomStrength = isMobile ? baseStrength * 0.6 : baseStrength
+}
+
+watch(() => props.sentimentScore, () => {
+  updateSentimentTargets(props.sentimentScore ?? 0)
 })
 
-// Throttled mouse position update
+// ─── Mouse interaction ───────────────────────────────────────────────────────
+
 let mouseUpdateTimeout: number | null = null
 const updateMousePosition = (event: MouseEvent) => {
   if (mouseUpdateTimeout || prefersReducedMotion) return
@@ -217,7 +363,7 @@ const updateMousePosition = (event: MouseEvent) => {
 
     if (particles) {
       const positions = particles.geometry.attributes.position.array as Float32Array
-      const mouseInfluence = 0.1
+      const mouseInfluence = 0.08
 
       for (let i = 0; i < positions.length; i += 3) {
         const dx = positions[i] - mousePosition.x * 50
@@ -238,22 +384,26 @@ const updateMousePosition = (event: MouseEvent) => {
   }, 16)
 }
 
-// Throttled resize handler
+// ─── Resize ──────────────────────────────────────────────────────────────────
+
 let resizeTimeout: number | null = null
 const handleResize = () => {
   if (resizeTimeout) return
 
   resizeTimeout = window.setTimeout(() => {
-    if (!container.value || !camera || !renderer) return
+    if (!container.value || !camera || !renderer || !composer) return
 
     camera.aspect = window.innerWidth / window.innerHeight
     camera.updateProjectionMatrix()
     renderer.setSize(window.innerWidth, window.innerHeight)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2))
+    composer.setSize(window.innerWidth, window.innerHeight)
 
     resizeTimeout = null
   }, 250)
 }
+
+// ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 onMounted(() => {
   initScene()
@@ -269,6 +419,7 @@ onUnmounted(() => {
   if (mouseUpdateTimeout) clearTimeout(mouseUpdateTimeout)
   if (resizeTimeout) clearTimeout(resizeTimeout)
 
+  if (composer) composer.dispose()
   if (renderer) renderer.dispose()
   if (particles) {
     particles.geometry.dispose()
@@ -288,7 +439,6 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  transition: background-color 2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .loading-overlay {
@@ -320,21 +470,5 @@ onUnmounted(() => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}
-
-.sentiment-negative {
-  background-color: rgb(17, 24, 39);
-}
-
-.sentiment-neutral-negative {
-  background-color: rgb(30, 58, 138);
-}
-
-.sentiment-neutral-positive {
-  background-color: rgb(59, 130, 246);
-}
-
-.sentiment-positive {
-  background-color: rgb(234, 179, 8);
 }
 </style>

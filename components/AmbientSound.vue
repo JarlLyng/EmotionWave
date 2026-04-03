@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
+import { ref, watch, onUnmounted, computed } from 'vue'
 
 const props = defineProps<{
   sentimentScore: number
@@ -47,14 +47,71 @@ const isPlaying = ref(false)
 const isLoading = ref(false)
 const needsInteraction = ref(true)
 const volume = ref(0.5)
-const color = ref('#4F46E5') // Indigo-600
-let synth: any = null
-let reverb: any = null
-let delay: any = null
-let filter: any = null
-let toneModule: any = null
-let chordInterval: any = null
-let chordIndex = 0 // Track hvilken variation vi er på
+const color = ref('#4F46E5')
+
+// ─── Tone.js module + audio nodes ────────────────────────────────────────────
+let toneModule: typeof import('tone') | null = null
+
+// Master bus
+let masterGain: any = null
+let masterReverb: any = null
+let masterChorus: any = null
+let pingPongDelay: any = null
+
+// Layer 1: Drone
+let droneSynth: any = null
+let droneFilter: any = null
+let droneLFO: any = null
+let droneGain: any = null
+let currentDroneNote = 'C2'
+
+// Layer 2: Texture
+let noiseSource: any = null
+let noiseFilter: any = null
+let noiseGain: any = null
+
+// Layer 3: Melodic
+let melodicSynth: any = null
+let melodicFilter: any = null
+let melodicGain: any = null
+let chordInterval: ReturnType<typeof setTimeout> | null = null
+let chordIndex = 0
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const PENTATONIC_MINOR = ['C3', 'Eb3', 'F3', 'G3', 'Bb3', 'C4', 'Eb4']
+const PENTATONIC_MAJOR = ['C3', 'D3', 'E3', 'G3', 'A3', 'C4', 'D4', 'E4']
+
+const CHORD_VARIATIONS = {
+  negative: [
+    ['C3', 'Eb3', 'G3'],
+    ['F3', 'G3', 'Bb3'],
+    ['Eb3', 'G3', 'Bb3'],
+  ],
+  neutralNeg: [
+    ['Eb3', 'G3', 'Bb3'],
+    ['C3', 'Eb3', 'Bb3'],
+    ['F3', 'G3', 'C4'],
+  ],
+  neutralPos: [
+    ['C3', 'E3', 'G3'],
+    ['G3', 'A3', 'D4'],
+    ['E3', 'G3', 'C4'],
+  ],
+  positive: [
+    ['C3', 'E3', 'G3'],
+    ['G3', 'C4', 'E4'],
+    ['D3', 'G3', 'A3'],
+    ['E3', 'A3', 'C4'],
+  ],
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function mapRange(value: number, inMin: number, inMax: number, outMin: number, outMax: number): number {
+  const clamped = Math.max(inMin, Math.min(inMax, value))
+  return outMin + (outMax - outMin) * ((clamped - inMin) / (inMax - inMin))
+}
 
 const getButtonTitle = computed(() => {
   if (isLoading.value) return 'Initializing audio...'
@@ -62,7 +119,6 @@ const getButtonTitle = computed(() => {
   return isPlaying.value ? 'Mute' : 'Unmute'
 })
 
-// Lazy load Tone.js
 const loadToneJS = async () => {
   if (!toneModule) {
     toneModule = await import('tone')
@@ -70,309 +126,297 @@ const loadToneJS = async () => {
   return toneModule
 }
 
-// Definer skalaer
-const C_MINOR_SCALE = ['C3', 'D3', 'Eb3', 'F3', 'G3', 'Ab3', 'Bb3', 'C4', 'D4', 'Eb4']
-const C_MAJOR_SCALE = ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'E4']
+// ─── Init audio ──────────────────────────────────────────────────────────────
 
-// Akkord-variationer for hver sentiment-range
-const CHORD_VARIATIONS = {
-  negative: [
-    ['C3', 'Eb3', 'G3'], // C mol
-    ['Ab3', 'C4', 'Eb4'], // Ab dur (relativ dur)
-    ['F3', 'Ab3', 'C4'], // F mol
-    ['G3', 'Bb3', 'D4'], // G mol
-  ],
-  neutralNegative: [
-    ['Eb3', 'G3', 'Bb3'], // Eb dur
-    ['C3', 'Eb3', 'G3', 'Bb3'], // C mol7
-    ['Ab3', 'C4', 'Eb4'], // Ab dur
-    ['F3', 'A3', 'C4'], // F dur
-  ],
-  neutralPositive: [
-    ['F3', 'A3', 'C4'], // F dur
-    ['C3', 'E3', 'G3', 'A3'], // Am7
-    ['G3', 'B3', 'D4'], // G dur
-    ['D3', 'F3', 'A3'], // D mol
-  ],
-  positive: [
-    ['C3', 'E3', 'G3'], // C dur
-    ['G3', 'B3', 'D4'], // G dur
-    ['F3', 'A3', 'C4'], // F dur
-    ['A3', 'C4', 'E4'], // Am
-    ['D3', 'F#3', 'A3'], // D dur
-  ]
-}
-
-
-// Opret synth med reverb og delay
 const initAudio = async () => {
-  try {
-    const Tone = await loadToneJS()
-    await Tone.start()
-    
-    // Opret filter først
-    filter = new Tone.Filter({
-      type: 'lowpass',
-      frequency: 1000,
-      rolloff: -24,
-      Q: 1
-    })
-    
-    // Tilføj reverb og generer den
-    reverb = new Tone.Reverb({
-      decay: 8,
-      wet: 0.8,
-      preDelay: 0.2
-    })
-    // Generer reverb impulsrespons (kort timeout for hurtigere init)
-    await reverb.generate()
-    
-    // Tilføj delay med variation
-    delay = new Tone.FeedbackDelay({
-      delayTime: '4n',
-      feedback: 0.3 + Math.random() * 0.2, // Variation i feedback
-      wet: 0.25 + Math.random() * 0.15
-    })
-    
-    synth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: {
-        type: 'triangle' // Default start lyd
-      },
-      envelope: {
-        attack: 1,
-        decay: 0.5,
-        sustain: 0.5,
-        release: 3
-      }
-    })
-    
-    // Kæd effekter sammen i korrekt rækkefølge: synth -> filter -> reverb -> delay -> destination
-    synth.chain(filter, reverb, delay, Tone.Destination)
-    
-    // Sæt initial volumen
-    synth.volume.value = (volume.value - 1) * 20
-    
-    console.log('Lydsystem initialiseret')
-  } catch (error) {
-    console.error('Fejl ved initialisering af lydsystem:', error)
-    needsInteraction.value = true
+  const Tone = await loadToneJS()
+  await Tone.start()
+
+  // ── Master effects chain ──
+  masterReverb = new Tone.Reverb({ decay: 12, wet: 0.6, preDelay: 0.3 })
+  await masterReverb.generate()
+
+  pingPongDelay = new Tone.PingPongDelay({
+    delayTime: '4n',
+    feedback: 0.2,
+    wet: 0.15,
+  })
+
+  masterChorus = new Tone.Chorus({
+    frequency: 0.3,
+    delayTime: 3.5,
+    depth: 0.7,
+    wet: 0.3,
+  }).start()
+
+  masterGain = new Tone.Gain(Tone.dbToGain((volume.value - 1) * 20))
+  masterGain.chain(masterChorus, pingPongDelay, masterReverb, Tone.getDestination())
+
+  // ── Layer 1: Drone (continuous evolving pad) ──
+  droneFilter = new Tone.Filter({ type: 'lowpass', frequency: 800, rolloff: -24, Q: 1 })
+  droneGain = new Tone.Gain(Tone.dbToGain(-8))
+
+  droneSynth = new Tone.FMSynth({
+    harmonicity: 1.5,
+    modulationIndex: 2,
+    oscillator: { type: 'sine' },
+    modulation: { type: 'sine' },
+    envelope: { attack: 4, decay: 2, sustain: 0.9, release: 8 },
+    modulationEnvelope: { attack: 3, decay: 1, sustain: 0.8, release: 6 },
+  })
+  droneSynth.chain(droneFilter, droneGain, masterGain)
+
+  droneLFO = new Tone.LFO({ frequency: 0.05, min: 300, max: 1200, type: 'sine' })
+  droneLFO.connect(droneFilter.frequency)
+
+  // ── Layer 2: Texture (filtered noise) ──
+  noiseGain = new Tone.Gain(Tone.dbToGain(-20))
+  noiseFilter = new Tone.AutoFilter({
+    frequency: 0.1,
+    baseFrequency: 200,
+    octaves: 4,
+    type: 'sine',
+    depth: 1,
+    wet: 1,
+  }).start()
+  noiseFilter.connect(noiseGain)
+  noiseGain.connect(masterGain)
+
+  noiseSource = new Tone.Noise('pink')
+  noiseSource.connect(noiseFilter)
+
+  // ── Layer 3: Melodic (bell-like AM synth) ──
+  melodicFilter = new Tone.Filter({ type: 'lowpass', frequency: 2000, rolloff: -12 })
+  melodicGain = new Tone.Gain(Tone.dbToGain(-12))
+
+  melodicSynth = new Tone.PolySynth(Tone.AMSynth, {
+    harmonicity: 1.5,
+    oscillator: { type: 'sine' },
+    modulation: { type: 'sine' },
+    envelope: { attack: 2, decay: 1.5, sustain: 0.6, release: 6 },
+    modulationEnvelope: { attack: 1.5, decay: 1, sustain: 0.5, release: 4 },
+  })
+  melodicSynth.chain(melodicFilter, melodicGain, masterGain)
+}
+
+// ─── Start all layers (staggered to avoid pop) ──────────────────────────────
+
+const startAllLayers = async () => {
+  if (!droneSynth || !noiseSource || !droneLFO) return
+
+  const score = props.sentimentScore ?? 0
+
+  // Apply initial sentiment parameters
+  updateSentimentParameters(score)
+
+  // Layer 1: Start drone
+  currentDroneNote = score < 0 ? 'C2' : 'G2'
+  droneSynth.triggerAttack(currentDroneNote)
+  droneLFO.start()
+
+  // Layer 2: Start noise (staggered 1s)
+  await new Promise(r => setTimeout(r, 1000))
+  if (!isPlaying.value) return
+  noiseSource.start()
+
+  // Layer 3: Start melodic events (staggered another 1s)
+  await new Promise(r => setTimeout(r, 1000))
+  if (!isPlaying.value) return
+  scheduleMelodicEvent()
+}
+
+// ─── Melodic events ──────────────────────────────────────────────────────────
+
+const playMelodicEvent = () => {
+  if (!melodicSynth || !isPlaying.value || !toneModule) return
+
+  const Tone = toneModule
+  const score = props.sentimentScore ?? 0
+  const now = Tone.now()
+
+  // Pick chord variation
+  let chords: string[][]
+  let scale: string[]
+  if (score <= -0.5) {
+    chords = CHORD_VARIATIONS.negative
+    scale = PENTATONIC_MINOR
+  } else if (score <= 0) {
+    chords = CHORD_VARIATIONS.neutralNeg
+    scale = PENTATONIC_MINOR
+  } else if (score <= 0.5) {
+    chords = CHORD_VARIATIONS.neutralPos
+    scale = PENTATONIC_MAJOR
+  } else {
+    chords = CHORD_VARIATIONS.positive
+    scale = PENTATONIC_MAJOR
+  }
+
+  const chord = chords[chordIndex % chords.length]
+  chordIndex++
+
+  // Play chord with long release
+  melodicSynth.triggerAttackRelease(chord, '2n', now)
+
+  // 1-2 melodic notes that emerge slowly
+  const numNotes = 1 + Math.floor(Math.random() * 2)
+  for (let i = 0; i < numNotes; i++) {
+    const note = scale[Math.floor(Math.random() * scale.length)]
+    const delay = 1.0 + i * 1.2 + Math.random() * 0.8
+    melodicSynth.triggerAttackRelease(note, '2n', now + delay)
   }
 }
 
-// Spil akkord baseret på sentiment med variation
-const playChord = async () => {
-  if (!synth || !isPlaying.value || !toneModule) return
-  
-  try {
-    const Tone = await loadToneJS()
+const scheduleMelodicEvent = () => {
+  if (!isPlaying.value) return
+
+  playMelodicEvent()
+
+  const scheduleNext = () => {
+    if (!isPlaying.value) return
     const score = props.sentimentScore ?? 0
-    const now = Tone.now()
-    
-    // Vælg akkord-variation baseret på sentiment
-    let chordVariations
-    let scale = C_MINOR_SCALE
-    
-    if (score <= -0.5) {
-      chordVariations = CHORD_VARIATIONS.negative
-    } else if (score <= 0) {
-      chordVariations = CHORD_VARIATIONS.neutralNegative
-    } else if (score <= 0.5) {
-      chordVariations = CHORD_VARIATIONS.neutralPositive
-      scale = C_MAJOR_SCALE
-    } else {
-      chordVariations = CHORD_VARIATIONS.positive
-      scale = C_MAJOR_SCALE
-    }
-    
-    // Vælg akkord med rotation gennem variationer
-    const chord = chordVariations[chordIndex % chordVariations.length]
-    chordIndex++
-    
-    // Opdater synth karakter (Timbre/Envelope) dynamisk baseret på sentiment
-    // Dette ændrer lyden fra "skarp/stresset" til "blød/drømmende"
-    if (synth) {
-       if (score <= -0.5) {
-        // Negativ: Skarp, markant lyd (Sawtooth)
-        synth.set({
-          oscillator: { type: 'sawtooth' },
-          envelope: { attack: 0.05, decay: 0.2, sustain: 0.1, release: 1 }
-        })
-      } else if (score <= 0) {
-        // Neutral-Negativ: Kold, hul lyd (Square med langsomt attack)
-        synth.set({
-          oscillator: { type: 'square' },
-          envelope: { attack: 2, decay: 1, sustain: 0.2, release: 3 }
-        })
-      } else if (score <= 0.5) {
-        // Neutral-Positiv: Blød, klar lyd (Triangle)
-        synth.set({
-          oscillator: { type: 'triangle' },
-          envelope: { attack: 0.5, decay: 0.5, sustain: 0.5, release: 3 }
-        })
-      } else {
-        // Positiv: Rig, varm lyd (Fat Sine/Triangle)
-        synth.set({
-          oscillator: { type: 'fatsine' }, // Rigere sinus-lyd
-          envelope: { attack: 1.5, decay: 1, sustain: 0.8, release: 5 }
-        })
+    // Negative = sparser (10-15s), positive = more active (5-8s)
+    const baseDelay = mapRange(score, -1, 1, 12000, 6000)
+    const variation = (Math.random() - 0.5) * 3000
+    const delay = Math.max(4000, baseDelay + variation)
+
+    chordInterval = setTimeout(() => {
+      if (isPlaying.value) {
+        playMelodicEvent()
+        scheduleNext()
       }
-    }
-
-    // Variation i note-durationer
-    const durations = ['2n', '4n', '1n', '2n.']
-    const chordDuration = durations[Math.floor(Math.random() * durations.length)]
-    
-    // Spil hovedakkord
-    synth.triggerAttackRelease(chord, chordDuration, now)
-    
-    // Tilføj flere melodiske elementer med variation
-    const numMelodicNotes = 2 + Math.floor(Math.random() * 2) // 2-3 ekstra noter
-    
-    for (let i = 0; i < numMelodicNotes; i++) {
-      const randomNote = scale[Math.floor(Math.random() * scale.length)]
-      const delay = 0.5 + i * 0.8 + Math.random() * 0.5 // Varieret timing
-      const noteDuration = ['4n', '8n', '2n'][Math.floor(Math.random() * 3)]
-      synth.triggerAttackRelease(randomNote, noteDuration, now + delay)
-    }
-    
-    // Tilføj arpeggio nogle gange (30% chance)
-    if (Math.random() < 0.3) {
-      const arpeggioNotes = [...chord].reverse() // Spil akkord omvendt som arpeggio
-      arpeggioNotes.forEach((note, index) => {
-        synth.triggerAttackRelease(note, '8n', now + 1.5 + index * 0.2)
-      })
-    }
-    
-    // Tilføj bass-note nogle gange (40% chance)
-    if (Math.random() < 0.4) {
-      const bassNote = chord[0].replace(/\d/, (match) => {
-        const octave = parseInt(match)
-        return Math.max(1, octave - 1).toString() // En oktav lavere
-      })
-      synth.triggerAttackRelease(bassNote, '1n', now + 0.3)
-    }
-    
-    // Juster filter baseret på sentiment med smooth transition
-    if (filter) {
-      const baseFreq = 500 + score * 2000
-      const variation = (Math.random() - 0.5) * 500 // ±250 Hz variation
-      const frequency = Math.max(200, Math.min(8000, baseFreq + variation))
-      filter.frequency.rampTo(frequency, 1.5)
-    }
-    
-    // Juster reverb baseret på sentiment med variation
-    if (reverb) {
-      const baseWet = 0.6 - score * 0.3
-      const variation = (Math.random() - 0.5) * 0.1
-      const wetAmount = Math.max(0.3, Math.min(0.9, baseWet + variation))
-      reverb.wet.rampTo(wetAmount, 1.5)
-    }
-    
-    // Variation i delay-time
-    if (delay) {
-      const delayTimes = ['4n', '8n', '2n']
-      const randomDelay = delayTimes[Math.floor(Math.random() * delayTimes.length)]
-      delay.delayTime.value = randomDelay
-    }
-    
-  } catch (error) {
-    console.error('Fejl ved afspilning af akkord:', error)
+    }, delay)
   }
+
+  scheduleNext()
 }
 
-// Start ambient lyd med varieret timing
-const playAmbientSound = async () => {
-  if (!isPlaying.value || !toneModule) return
-  
-  try {
-    const Tone = await loadToneJS()
-    await playChord()
-    
-    // Funktion til at spille næste akkord med varieret timing
-    const scheduleNextChord = () => {
-      if (!isPlaying.value) return
-      
-      // Variation i timing: 3-6 sekunder
-      const baseDelay = 4000
-      const variation = (Math.random() - 0.5) * 2000 // ±1 sekund
-      const delay = Math.max(3000, Math.min(6000, baseDelay + variation))
-      
-      chordInterval = setTimeout(async () => {
-        if (isPlaying.value) {
-          await playChord()
-          scheduleNextChord() // Planlæg næste akkord
+// ─── Continuous sentiment mapping ────────────────────────────────────────────
+
+function updateSentimentParameters(score: number) {
+  if (!droneSynth) return
+
+  // ── Drone ──
+  const modIndex = mapRange(score, -1, 1, 6, 0.5)
+  droneSynth.modulationIndex.rampTo(modIndex, 10)
+
+  // LFO speed: negative = faster/unsettled, positive = glacial/calm
+  if (droneLFO) {
+    const lfoFreq = mapRange(score, -1, 1, 0.15, 0.02)
+    droneLFO.frequency.rampTo(lfoFreq, 8)
+
+    const filterMin = mapRange(score, -1, 1, 200, 400)
+    const filterMax = mapRange(score, -1, 1, 600, 1400)
+    droneLFO.min = filterMin
+    droneLFO.max = filterMax
+  }
+
+  // Drone note: crossfade to new root
+  const newDroneNote = score < -0.3 ? 'C2' : score < 0.3 ? 'Eb2' : 'G2'
+  if (newDroneNote !== currentDroneNote && droneSynth) {
+    droneSynth.triggerRelease('+0')
+    setTimeout(() => {
+      if (isPlaying.value && droneSynth) {
+        currentDroneNote = newDroneNote
+        droneSynth.triggerAttack(newDroneNote)
+      }
+    }, 2000)
+  }
+
+  // ── Texture ──
+  if (noiseFilter) {
+    const autoFilterFreq = mapRange(score, -1, 1, 0.03, 0.2)
+    noiseFilter.frequency.rampTo(autoFilterFreq, 8)
+    noiseFilter.baseFrequency = mapRange(score, -1, 1, 100, 800)
+    noiseFilter.octaves = mapRange(score, -1, 1, 2, 5)
+  }
+
+  // Change noise type at thresholds (crossfade to avoid click)
+  if (noiseSource && noiseGain) {
+    let targetType: 'brown' | 'pink' | 'white' = 'pink'
+    if (score < -0.3) targetType = 'brown'
+    else if (score > 0.3) targetType = 'white'
+
+    if (noiseSource.type !== targetType) {
+      // Fade out, switch, fade back in
+      const Tone = toneModule!
+      noiseGain.gain.rampTo(0, 0.5)
+      setTimeout(() => {
+        if (noiseSource) {
+          noiseSource.type = targetType
+          noiseGain?.gain.rampTo(Tone.dbToGain(-20), 0.5)
         }
-      }, delay)
+      }, 600)
     }
-    
-    scheduleNextChord()
-    
-  } catch (error) {
-    console.error('Fejl ved afspilning af ambient lyd:', error)
-    isPlaying.value = false
-    needsInteraction.value = true
+  }
+
+  // ── Master effects ──
+  if (masterReverb) {
+    masterReverb.wet.rampTo(mapRange(score, -1, 1, 0.8, 0.5), 8)
+  }
+  if (masterChorus) {
+    masterChorus.wet.rampTo(mapRange(score, -1, 1, 0.15, 0.45), 8)
+  }
+  if (pingPongDelay) {
+    pingPongDelay.feedback.rampTo(mapRange(score, -1, 1, 0.35, 0.15), 8)
+  }
+
+  // ── Melodic filter ──
+  if (melodicFilter) {
+    const cutoff = mapRange(score, -1, 1, 600, 3000)
+    melodicFilter.frequency.rampTo(cutoff, 5)
+  }
+
+  // ── Melodic harmonicity ──
+  if (melodicSynth) {
+    // AMSynth harmonicity affects timbre dissonance
+    // Can't rampTo on PolySynth voices directly, so set for next notes
+    melodicSynth.set({
+      harmonicity: mapRange(score, -1, 1, 2.5, 1.0),
+    })
   }
 }
 
-// Cleanup funktion
-const cleanup = () => {
-  if (chordInterval) {
-    clearTimeout(chordInterval)
-    chordInterval = null
-  }
-  
-  // Reset chord index
-  chordIndex = 0
-  
-  // Stop alle aktive noter først
-  if (synth) {
-    synth.releaseAll()
-  }
-  
-  // Dispose alle effekter i korrekt rækkefølge
-  if (delay) {
-    delay.dispose()
-    delay = null
-  }
-  if (reverb) {
-    reverb.dispose()
-    reverb = null
-  }
-  if (filter) {
-    filter.dispose()
-    filter = null
-  }
-  if (synth) {
-    synth.dispose()
-    synth = null
+// ─── Volume ──────────────────────────────────────────────────────────────────
+
+const updateVolume = () => {
+  if (masterGain && toneModule) {
+    const Tone = toneModule
+    masterGain.gain.rampTo(Tone.dbToGain((volume.value - 1) * 20), 0.1)
   }
 }
 
-// Toggle lyd
-const toggleSound = async () => {
-  if (isLoading.value) return 
+// ─── Color for slider ────────────────────────────────────────────────────────
+
+watch(() => props.sentimentScore, (score) => {
+  const s = score ?? 0
+
+  if (s <= -0.5) color.value = '#6B7280'
+  else if (s <= 0) color.value = '#3B82F6'
+  else if (s <= 0.5) color.value = '#60A5FA'
+  else color.value = '#FBBF24'
 
   if (isPlaying.value) {
-    console.log('Slukker lyd...')
+    updateSentimentParameters(s)
+  }
+})
+
+// ─── Toggle ──────────────────────────────────────────────────────────────────
+
+const toggleSound = async () => {
+  if (isLoading.value) return
+
+  if (isPlaying.value) {
     isPlaying.value = false
     cleanup()
   } else {
     try {
-      console.log('Starter lydinitialisering...')
       isLoading.value = true
-      
-      // Wait for user interaction before starting audio context
-      console.log('Waiting for Tone.start()...')
       await initAudio()
-      console.log('Lydsystem initialiseret')
       needsInteraction.value = false
       isPlaying.value = true
-      
-      // Start ambient lyd
-      await playAmbientSound()
-      
+      await startAllLayers()
     } catch (error) {
-      console.error('Fejl ved start af lyd:', error)
+      console.error('Audio init failed:', error)
       needsInteraction.value = true
       cleanup()
     } finally {
@@ -381,33 +425,38 @@ const toggleSound = async () => {
   }
 }
 
-// Opdater volumen
-const updateVolume = () => {
-  if (synth) {
-    synth.volume.value = (volume.value - 1) * 20 // Konverter 0-1 til dB
-  }
-}
+// ─── Cleanup ─────────────────────────────────────────────────────────────────
 
-// Opdater farve baseret på sentiment
-watch(() => props.sentimentScore, () => {
-  const score = props.sentimentScore ?? 0
-  
-  if (score <= -0.5) {
-    color.value = '#6B7280' // grå
-  } else if (score <= 0) {
-    color.value = '#3B82F6' // blå
-  } else if (score <= 0.5) {
-    color.value = '#60A5FA' // lys blå
-  } else {
-    color.value = '#FBBF24' // gul
+const cleanup = () => {
+  if (chordInterval) {
+    clearTimeout(chordInterval)
+    chordInterval = null
   }
-  
-  // Opdater musikken reaktivt når sentiment ændres (hvis den spiller)
-  if (isPlaying.value && synth) {
-    // Spil nyt akkord baseret på opdateret sentiment
-    playChord()
+  chordIndex = 0
+
+  // Stop sources
+  if (noiseSource) { try { noiseSource.stop() } catch {} }
+  if (droneSynth) { try { droneSynth.triggerRelease() } catch {} }
+  if (melodicSynth) { try { melodicSynth.releaseAll() } catch {} }
+  if (droneLFO) { try { droneLFO.stop() } catch {} }
+
+  // Dispose all nodes
+  const nodes = [
+    droneLFO, droneSynth, droneFilter, droneGain,
+    noiseSource, noiseFilter, noiseGain,
+    melodicSynth, melodicFilter, melodicGain,
+    pingPongDelay, masterChorus, masterReverb, masterGain,
+  ]
+  for (const node of nodes) {
+    if (node) { try { node.dispose() } catch {} }
   }
-})
+
+  // Reset references
+  droneSynth = null; droneFilter = null; droneLFO = null; droneGain = null
+  noiseSource = null; noiseFilter = null; noiseGain = null
+  melodicSynth = null; melodicFilter = null; melodicGain = null
+  pingPongDelay = null; masterChorus = null; masterReverb = null; masterGain = null
+}
 
 onUnmounted(() => {
   cleanup()
@@ -533,16 +582,16 @@ onUnmounted(() => {
     right: 1rem;
     justify-content: flex-start;
   }
-  
+
   .sound-button {
     min-width: 7rem;
     height: 2.5rem;
     padding: 0 0.75rem;
     font-size: 0.75rem;
   }
-  
+
   .volume-control {
     width: 6rem;
   }
 }
-</style> 
+</style>

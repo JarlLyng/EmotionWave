@@ -8,7 +8,6 @@ import { defineEventHandler } from 'h3'
 import {
   type Article,
   type BaseSentimentData,
-  normalizeSentiment,
   keywordBasedSentiment,
   getDynamicFallbackData as getBaseFallbackData,
   getDateRange,
@@ -116,48 +115,33 @@ async function fetchGDELTNews(): Promise<Article[]> {
 
 // ─── HuggingFace ─────────────────────────────────────────────────────────────
 
+// Preferred endpoint for Pro accounts (priority queue, no cold starts)
+const HF_ROUTER_URL = 'https://router.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest'
+const HF_INFERENCE_URL = 'https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest'
+
 async function analyzeSentimentWithHuggingFace(text: string, apiKey: string): Promise<number> {
-  const endpoints = [
-    'https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest',
-    'https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment',
-    'https://router.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest',
-    'https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english',
-  ]
+  const truncatedText = text.substring(0, 500)
+  const body = JSON.stringify({ inputs: truncatedText, options: { wait_for_model: true } })
+  const headers = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  }
+
+  // Try router first (Pro accounts get priority queue), fall back to inference API
+  const endpoints = [HF_ROUTER_URL, HF_INFERENCE_URL]
 
   for (const endpoint of endpoints) {
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ inputs: text.substring(0, 500) }),
+        headers,
+        body,
+        signal: controller.signal,
       })
-
-      if (response.status === 503) {
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        const retry = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ inputs: text.substring(0, 500) }),
-        })
-        if (retry.ok) {
-          const data = await retry.json()
-          if (data.error?.includes('no longer supported')) continue
-          return parseHuggingFaceSentiment(data)
-        }
-        continue
-      }
-
-      if (response.ok) {
-        const data = await response.json()
-        if (data.error?.includes('no longer supported')) continue
-        return parseHuggingFaceSentiment(data)
-      }
+      clearTimeout(timeoutId)
 
       if (response.status === 401 || response.status === 403) {
         throw new Error(`HuggingFace authentication failed (${response.status})`)
@@ -165,14 +149,57 @@ async function analyzeSentimentWithHuggingFace(text: string, apiKey: string): Pr
       if (response.status === 429) {
         throw new Error('HuggingFace rate limit exceeded')
       }
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.error?.includes('no longer supported')) continue
+        return parseHuggingFaceSentiment(data)
+      }
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error)
-      console.error(`HuggingFace endpoint ${endpoint} failed:`, msg)
+      if (msg.includes('authentication') || msg.includes('rate limit')) throw error
+      console.warn(`HuggingFace endpoint ${endpoint} failed:`, msg)
       continue
     }
   }
 
   throw new Error('All HuggingFace endpoints failed')
+}
+
+/** Batch-analyze multiple texts in parallel (respects concurrency to avoid rate limits) */
+async function batchAnalyzeWithHuggingFace(
+  articles: Array<{ text: string; index: number }>,
+  apiKey: string
+): Promise<Map<number, number>> {
+  const results = new Map<number, number>()
+  const CONCURRENCY = 5
+
+  for (let i = 0; i < articles.length; i += CONCURRENCY) {
+    const batch = articles.slice(i, i + CONCURRENCY)
+    const settled = await Promise.allSettled(
+      batch.map(async ({ text, index }) => {
+        const cacheKey = text.substring(0, 100)
+        if (articleCache.has(cacheKey)) {
+          return { index, score: articleCache.get(cacheKey)! }
+        }
+        const score = await analyzeSentimentWithHuggingFace(smartTruncate(text, 500), apiKey)
+        if (articleCache.size >= MAX_CACHE_SIZE) {
+          const firstKey = articleCache.keys().next().value
+          if (firstKey) articleCache.delete(firstKey)
+        }
+        articleCache.set(cacheKey, score)
+        return { index, score }
+      })
+    )
+
+    for (const result of settled) {
+      if (result.status === 'fulfilled') {
+        results.set(result.value.index, result.value.score)
+      }
+    }
+  }
+
+  return results
 }
 
 interface HuggingFaceLabel {
@@ -215,9 +242,12 @@ function parseHuggingFaceSentiment(data: unknown): number {
     }
   }
 
-  if (positiveScore > negativeScore && positiveScore > neutralScore) return positiveScore * 10
-  if (negativeScore > positiveScore && negativeScore > neutralScore) return -negativeScore * 10
-  return 0
+  // Use full probability distribution: (positive - negative) scaled to [-10, 10]
+  // Neutral acts as a dampener — high neutral means the text is ambiguous
+  const rawScore = (positiveScore - negativeScore) * 10
+  // Dampen by neutral confidence: if neutral is dominant, score stays near 0
+  const neutralDampen = 1 - (neutralScore * 0.5)
+  return Math.max(-10, Math.min(10, rawScore * neutralDampen))
 }
 
 // ─── NewsAPI ─────────────────────────────────────────────────────────────────
@@ -260,54 +290,8 @@ async function fetchNewsAPINews(): Promise<Article[]> {
         }
       })
 
-      const articlesToAnalyze = rawArticles.slice(0, 10)
-      const remainingArticles = rawArticles.slice(10)
-
-      for (const article of articlesToAnalyze) {
-        const fullText = `${article.title || ''} ${article.description || ''}`.trim()
-        if (!fullText) continue
-
-        const cacheKey = fullText.substring(0, 100)
-        let sentiment = 0
-
-        if (articleCache.has(cacheKey)) {
-          sentiment = articleCache.get(cacheKey)!
-        } else {
-          const truncatedText = smartTruncate(fullText, 500)
-
-          if (config.huggingFaceKey) {
-            try {
-              const timeoutPromise = new Promise<number>((_, reject) =>
-                setTimeout(() => reject(new Error('HuggingFace timeout')), 3000)
-              )
-              sentiment = await Promise.race([
-                analyzeSentimentWithHuggingFace(truncatedText, config.huggingFaceKey),
-                timeoutPromise,
-              ])
-
-              if (articleCache.size >= MAX_CACHE_SIZE) {
-                const firstKey = articleCache.keys().next().value
-                if (firstKey) articleCache.delete(firstKey)
-              }
-              articleCache.set(cacheKey, sentiment)
-            } catch {
-              sentiment = keywordBasedSentiment(fullText)
-            }
-          } else {
-            sentiment = keywordBasedSentiment(fullText)
-          }
-        }
-
-        allArticles.push({
-          sentiment: Math.max(-10, Math.min(10, sentiment)),
-          url: article.url || '',
-          title: article.title || '',
-          source: article.source?.name || 'Unknown',
-          publishedAt: article.publishedAt,
-        })
-      }
-
-      for (const article of remainingArticles) {
+      // Use keyword sentiment for all articles initially
+      for (const article of rawArticles) {
         const text = `${article.title || ''} ${article.description || ''}`.trim()
         if (!text) continue
 
@@ -408,6 +392,31 @@ async function aggregateSentiment(): Promise<ServerSentimentData> {
   if (allArticles.length === 0) {
     const fallback = getBaseFallbackData()
     return { ...fallback, apiSources: ['Fallback'], articles: [] }
+  }
+
+  // Apply HuggingFace ML sentiment to top articles (all sources, not just NewsAPI)
+  const config = getConfig()
+  if (config.huggingFaceKey) {
+    try {
+      const textsToAnalyze = allArticles
+        .map((a, i) => ({ text: `${a.title} ${a.source}`.trim(), index: i }))
+        .filter(({ text }) => text.length > 10)
+        .slice(0, 30) // Analyze up to 30 articles across all sources
+
+      const hfScores = await batchAnalyzeWithHuggingFace(textsToAnalyze, config.huggingFaceKey)
+
+      for (const [index, score] of hfScores) {
+        // Blend HF score (70%) with keyword score (30%) for robustness
+        const keywordScore = allArticles[index].sentiment
+        allArticles[index].sentiment = Math.max(-10, Math.min(10,
+          score * 0.7 + keywordScore * 0.3
+        ))
+      }
+
+      if (hfScores.size > 0) apiSources.push('HuggingFace')
+    } catch (error) {
+      console.warn('HuggingFace batch analysis failed, using keyword scores:', error)
+    }
   }
 
   const { score, sources } = calculateWeightedSentiment(allArticles)
