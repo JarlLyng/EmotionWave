@@ -1,5 +1,7 @@
 # 🌊 EmotionWave
 
+[![Co-created with AI](https://madebyhuman.iamjarl.com/badges/co-created-white.svg)](https://madebyhuman.iamjarl.com)
+
 A living Nuxt-based website that reacts to the world's mood. Through real-time sentiment analysis of news and social media, the site's visual expression — colors, animations, and atmosphere — changes automatically.
 
 🌐 **Live Site**: [https://emotionwave.iamjarl.com](https://emotionwave.iamjarl.com) (Vercel)
