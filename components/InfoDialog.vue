@@ -142,8 +142,22 @@
 
           <!-- Footer -->
           <div class="footer-section bg-white/5">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-sm text-white/50">
-              <p class="text-white/30">Built with Nuxt 3, Three.js and Tone.js</p>
+            <div class="flex flex-col gap-4">
+              <p class="text-white/30 text-sm">Built with Nuxt 3, Three.js and Tone.js</p>
+
+              <!-- More from IAMJARL -->
+              <div class="border-t border-white/10 pt-3">
+                <p class="text-white/40 text-xs mb-2 font-light">More from IAMJARL</p>
+                <nav class="flex flex-wrap gap-2 text-xs">
+                  <a href="https://runningfromhorses.com" target="_blank" rel="noopener noreferrer" class="text-white/50 hover:text-white/70 transition-colors">Running from Horses</a>
+                  <span class="text-white/20">•</span>
+                  <a href="https://beertuner.iamjarl.com" target="_blank" rel="noopener noreferrer" class="text-white/50 hover:text-white/70 transition-colors">BeerTuner</a>
+                  <span class="text-white/20">•</span>
+                  <a href="https://madebyhuman.iamjarl.com" target="_blank" rel="noopener noreferrer" class="text-white/50 hover:text-white/70 transition-colors">Made by Human</a>
+                  <span class="text-white/20">•</span>
+                  <a href="https://iamjarl.com" target="_blank" rel="noopener noreferrer" class="text-white/50 hover:text-white/70 transition-colors">All projects</a>
+                </nav>
+              </div>
             </div>
           </div>
         </div>
