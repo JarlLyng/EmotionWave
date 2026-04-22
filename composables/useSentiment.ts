@@ -146,9 +146,25 @@ export function useSentiment() {
     }
   }
 
+  let visibilityHandler: (() => void) | null = null
+
   function startPolling() {
     if (intervalId) clearInterval(intervalId)
-    intervalId = setInterval(fetchSentiment, 30000)
+    intervalId = setInterval(() => {
+      // Don't fetch if tab is not visible
+      if (typeof document !== 'undefined' && document.hidden) return
+      fetchSentiment()
+    }, 30000)
+
+    // Fetch immediately when user returns to tab
+    if (typeof document !== 'undefined' && !visibilityHandler) {
+      visibilityHandler = () => {
+        if (!document.hidden) {
+          fetchSentiment()
+        }
+      }
+      document.addEventListener('visibilitychange', visibilityHandler)
+    }
   }
 
   function stopPolling() {
@@ -159,6 +175,10 @@ export function useSentiment() {
     if (animationFrameId) {
       cancelAnimationFrame(animationFrameId)
       animationFrameId = null
+    }
+    if (typeof document !== 'undefined' && visibilityHandler) {
+      document.removeEventListener('visibilitychange', visibilityHandler)
+      visibilityHandler = null
     }
   }
 

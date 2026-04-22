@@ -33,7 +33,7 @@ const props = defineProps<Props>()
 
 const currentIndex = ref(0)
 const isTransitioning = ref(false)
-let intervalId: number | null = null
+let intervalId: ReturnType<typeof setInterval> | null = null
 
 // Filter articles with valid titles
 const validArticles = computed(() => {

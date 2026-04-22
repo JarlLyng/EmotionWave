@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 
 const props = defineProps<{
   sentimentScore: number
@@ -458,8 +458,43 @@ const cleanup = () => {
   pingPongDelay = null; masterChorus = null; masterReverb = null; masterGain = null
 }
 
+// ─── Audio Context Resume (Safari fix) ───────────────────────────────────────
+
+const handleVisibilityChange = async () => {
+  if (document.hidden) return
+  if (isPlaying.value && toneModule && toneModule.context.state === 'suspended') {
+    try {
+      await toneModule.context.resume()
+      console.log('AudioContext resumed')
+    } catch (e) {
+      console.warn('Could not resume AudioContext', e)
+    }
+  }
+}
+
+const handleInteraction = async () => {
+  if (isPlaying.value && toneModule && toneModule.context.state === 'suspended') {
+    try {
+      await toneModule.context.resume()
+    } catch (e) {}
+  }
+}
+
+onMounted(() => {
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    document.addEventListener('touchstart', handleInteraction, { passive: true })
+    document.addEventListener('click', handleInteraction, { passive: true })
+  }
+})
+
 onUnmounted(() => {
   cleanup()
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+    document.removeEventListener('touchstart', handleInteraction)
+    document.removeEventListener('click', handleInteraction)
+  }
 })
 </script>
 

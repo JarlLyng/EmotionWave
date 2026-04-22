@@ -3,6 +3,39 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
   devtools: { enabled: false },
+  modules: ['@vite-pwa/nuxt'],
+  pwa: {
+    registerType: 'autoUpdate',
+    manifest: {
+      name: 'EmotionWave',
+      short_name: 'EmotionWave',
+      description: 'An interactive web experience that visualizes global sentiment in real-time.',
+      theme_color: '#000000',
+      icons: [
+        {
+          src: 'android-chrome-192x192.png',
+          sizes: '192x192',
+          type: 'image/png'
+        },
+        {
+          src: 'android-chrome-512x512.png',
+          sizes: '512x512',
+          type: 'image/png'
+        }
+      ]
+    },
+    workbox: {
+      navigateFallback: '/',
+      globPatterns: ['**/*.{js,css,html,png,svg,ico}']
+    },
+    client: {
+      installPrompt: true,
+      periodicSyncForUpdates: 3600
+    },
+    devOptions: {
+      enabled: false
+    }
+  },
   css: ['~/assets/css/main.css'],
   vite: {
     plugins: [tailwindcss()],
@@ -19,7 +52,7 @@ export default defineNuxtConfig({
   nitro: {
     prerender: {
       crawlLinks: false,
-      routes: ['/', '/manifest.json', '/robots.txt', '/sitemap.xml']
+      routes: ['/', '/robots.txt', '/sitemap.xml']
     }
   },
   app: {
@@ -105,8 +138,6 @@ export default defineNuxtConfig({
           // PWA icons (Android Chrome)
           { rel: 'icon', type: 'image/png', href: joinURL('android-chrome-192x192.png'), sizes: '192x192' },
           { rel: 'icon', type: 'image/png', href: joinURL('android-chrome-512x512.png'), sizes: '512x512' },
-          // Manifest
-          { rel: 'manifest', href: joinURL('manifest.json') },
           // Canonical URL
           { rel: 'canonical', href: siteUrl }
         ]
