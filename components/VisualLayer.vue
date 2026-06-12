@@ -34,6 +34,11 @@ let mousePosition = { x: 0, y: 0 }
 let animationId: number | null = null
 let threeModule: typeof import('three') | null = null
 let prefersReducedMotion = false
+let isDestroyed = false
+let reducedMotionQuery: MediaQueryList | null = null
+const onReducedMotionChange = (e: MediaQueryListEvent) => {
+  prefersReducedMotion = e.matches
+}
 
 // Per-particle random phase offsets for organic flow
 let particlePhases: Float32Array | null = null
@@ -115,12 +120,14 @@ const initScene = async () => {
     const { UnrealBloomPass } = await import('three/examples/jsm/postprocessing/UnrealBloomPass.js')
     const { OutputPass } = await import('three/examples/jsm/postprocessing/OutputPass.js')
 
+    // Component may have unmounted while the dynamic imports were loading
+    if (isDestroyed || !container.value) return
+
     // Reduced motion
     if (typeof window !== 'undefined') {
-      prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', (e) => {
-        prefersReducedMotion = e.matches
-      })
+      reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+      prefersReducedMotion = reducedMotionQuery.matches
+      reducedMotionQuery.addEventListener('change', onReducedMotionChange)
     }
 
     // Scene + fog
@@ -223,7 +230,7 @@ const createParticles = (THREE: typeof import('three')) => {
 // ─── Animation loop ──────────────────────────────────────────────────────────
 
 const animate = (): void => {
-  if (!particles || !composer || !scene || !camera) {
+  if (isDestroyed || !particles || !composer || !scene || !camera) {
     animationId = null
     return
   }
@@ -412,13 +419,20 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  isDestroyed = true
+
   window.removeEventListener('mousemove', updateMousePosition)
   window.removeEventListener('resize', handleResize)
+  if (reducedMotionQuery) {
+    reducedMotionQuery.removeEventListener('change', onReducedMotionChange)
+    reducedMotionQuery = null
+  }
 
   if (animationId) cancelAnimationFrame(animationId)
   if (mouseUpdateTimeout) clearTimeout(mouseUpdateTimeout)
   if (resizeTimeout) clearTimeout(resizeTimeout)
 
+  if (bloomPass) bloomPass.dispose()
   if (composer) composer.dispose()
   if (renderer) renderer.dispose()
   if (particles) {
@@ -429,6 +443,13 @@ onUnmounted(() => {
       particles.material.dispose()
     }
   }
+
+  bloomPass = null
+  composer = null
+  renderer = null
+  particles = null
+  scene = null
+  camera = null
 })
 </script>
 
