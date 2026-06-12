@@ -77,6 +77,11 @@ let melodicGain: any = null
 let chordInterval: ReturnType<typeof setTimeout> | null = null
 let chordIndex = 0
 
+// Crossfade timers — must be cancelled on cleanup so they never fire
+// against disposed Tone.js nodes
+let droneCrossfadeTimeout: ReturnType<typeof setTimeout> | null = null
+let noiseCrossfadeTimeout: ReturnType<typeof setTimeout> | null = null
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const PENTATONIC_MINOR = ['C3', 'Eb3', 'F3', 'G3', 'Bb3', 'C4', 'Eb4']
@@ -292,8 +297,10 @@ const scheduleMelodicEvent = () => {
 
 // ─── Continuous sentiment mapping ────────────────────────────────────────────
 
-function updateSentimentParameters(score: number) {
+function updateSentimentParameters(rawScore: number) {
   if (!droneSynth) return
+
+  const score = Number.isFinite(rawScore) ? Math.max(-1, Math.min(1, rawScore)) : 0
 
   // ── Drone ──
   const modIndex = mapRange(score, -1, 1, 6, 0.5)
@@ -314,7 +321,9 @@ function updateSentimentParameters(score: number) {
   const newDroneNote = score < -0.3 ? 'C2' : score < 0.3 ? 'Eb2' : 'G2'
   if (newDroneNote !== currentDroneNote && droneSynth) {
     droneSynth.triggerRelease('+0')
-    setTimeout(() => {
+    if (droneCrossfadeTimeout) clearTimeout(droneCrossfadeTimeout)
+    droneCrossfadeTimeout = setTimeout(() => {
+      droneCrossfadeTimeout = null
       if (isPlaying.value && droneSynth) {
         currentDroneNote = newDroneNote
         droneSynth.triggerAttack(newDroneNote)
@@ -340,10 +349,12 @@ function updateSentimentParameters(score: number) {
       // Fade out, switch, fade back in
       const Tone = toneModule!
       noiseGain.gain.rampTo(0, 0.5)
-      setTimeout(() => {
-        if (noiseSource) {
+      if (noiseCrossfadeTimeout) clearTimeout(noiseCrossfadeTimeout)
+      noiseCrossfadeTimeout = setTimeout(() => {
+        noiseCrossfadeTimeout = null
+        if (noiseSource && noiseGain) {
           noiseSource.type = targetType
-          noiseGain?.gain.rampTo(Tone.dbToGain(-20), 0.5)
+          noiseGain.gain.rampTo(Tone.dbToGain(-20), 0.5)
         }
       }, 600)
     }
@@ -432,6 +443,14 @@ const cleanup = () => {
     clearTimeout(chordInterval)
     chordInterval = null
   }
+  if (droneCrossfadeTimeout) {
+    clearTimeout(droneCrossfadeTimeout)
+    droneCrossfadeTimeout = null
+  }
+  if (noiseCrossfadeTimeout) {
+    clearTimeout(noiseCrossfadeTimeout)
+    noiseCrossfadeTimeout = null
+  }
   chordIndex = 0
 
   // Stop sources
@@ -476,7 +495,7 @@ const handleInteraction = async () => {
   if (isPlaying.value && toneModule && toneModule.context.state === 'suspended') {
     try {
       await toneModule.context.resume()
-    } catch (e) {}
+    } catch {}
   }
 }
 

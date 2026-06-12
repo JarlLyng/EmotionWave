@@ -75,8 +75,14 @@ export async function fetchGDELTSentiment(): Promise<BaseSentimentData> {
 
     return { score, sources, timestamp: Date.now() }
   } catch (error) {
-    // Retry with simpler query on non-timeout errors
-    if (error instanceof Error && error.name !== 'AbortError') {
+    // Retry with a simpler query only when the failure looks transient.
+    // Timeouts (AbortError) and permanent client errors (4xx) won't be
+    // helped by an immediate retry against the same API.
+    const httpStatus = error instanceof Error
+      ? Number(error.message.match(/HTTP (\d{3})/)?.[1] ?? 0)
+      : 0
+    const isPermanent = httpStatus >= 400 && httpStatus < 500
+    if (error instanceof Error && error.name !== 'AbortError' && !isPermanent) {
       try {
         const simpleParams = new URLSearchParams({
           query: 'politics OR technology OR world',

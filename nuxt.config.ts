@@ -53,6 +53,32 @@ export default defineNuxtConfig({
     prerender: {
       crawlLinks: false,
       routes: ['/', '/robots.txt', '/sitemap.xml']
+    },
+    routeRules: {
+      '/**': {
+        headers: {
+          // 'unsafe-inline' in script-src is required by Nuxt's hydration payload
+          // and the inline JSON-LD block; connect-src covers the client-side
+          // GDELT fallback fetch and Umami analytics beacons.
+          'Content-Security-Policy': [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' https://umami-iamjarl.vercel.app",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data:",
+            "font-src 'self' data:",
+            "connect-src 'self' https://api.gdeltproject.org https://umami-iamjarl.vercel.app",
+            "worker-src 'self' blob:",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "frame-ancestors 'none'"
+          ].join('; '),
+          'X-Content-Type-Options': 'nosniff',
+          'X-Frame-Options': 'DENY',
+          'Referrer-Policy': 'strict-origin-when-cross-origin',
+          'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+          'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+        }
+      }
     }
   },
   app: {
@@ -147,26 +173,6 @@ export default defineNuxtConfig({
           src: 'https://umami-iamjarl.vercel.app/script.js',
           defer: true,
           'data-website-id': 'd85d4bee-9f37-4812-9337-58a3cca2cc6f'
-        },
-        {
-          type: 'application/ld+json',
-          innerHTML: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'WebApplication',
-            name: 'EmotionWave',
-            url: 'https://emotionwave.iamjarl.com/',
-            description: 'An interactive web experience that visualizes global sentiment in real-time through dynamic visuals and ambient sound, powered by live news analysis.',
-            applicationCategory: 'EntertainmentApplication',
-            operatingSystem: 'Web Browser',
-            offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-            author: { '@type': 'Person', name: 'Jarl Lyng', url: 'https://iamjarl.com' },
-            featureList: [
-              'Real-time global sentiment visualization',
-              'Live news analysis from GDELT, NewsAPI, and Reddit',
-              'Dynamic visuals and ambient sound',
-              'Interactive data art experience'
-            ]
-          })
         }
       ]
     }

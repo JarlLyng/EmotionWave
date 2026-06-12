@@ -115,7 +115,7 @@ self.addEventListener('fetch', (event) => {
             })
           }
           return response
-        } catch (error) {
+        } catch {
           return new Response('Resource not available offline', {
             status: 503,
             headers: { 'Content-Type': 'text/plain' }
@@ -127,7 +127,7 @@ self.addEventListener('fetch', (event) => {
       if (url.pathname.includes('/api/')) {
         try {
           return await fetch(event.request)
-        } catch (error) {
+        } catch {
           if (cachedResponse) return cachedResponse
           return new Response('', { status: 503 })
         }
@@ -137,7 +137,7 @@ self.addEventListener('fetch', (event) => {
       if (event.request.destination === 'document') {
         try {
           return await fetch(event.request)
-        } catch (error) {
+        } catch {
           return cachedResponse || caches.match(`${basePath}/`) || new Response('', { status: 503 })
         }
       }
@@ -145,7 +145,7 @@ self.addEventListener('fetch', (event) => {
       // Default: network-first
       try {
         return await fetch(event.request)
-      } catch (error) {
+      } catch {
         return cachedResponse || new Response('', { status: 404 })
       }
     })()

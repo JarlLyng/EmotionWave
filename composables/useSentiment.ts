@@ -135,6 +135,14 @@ export function useSentiment() {
             score: Math.max(-1, Math.min(1, baseScore + variation)),
             timestamp: now,
             sources: [],
+            // Keep previously fetched headlines if we have them; otherwise show
+            // an honest status line instead of leaving the rotator blank
+            articles: articles.value.length > 0 ? undefined : [{
+              title: 'Live news feed unavailable — running in demo mode',
+              url: '',
+              source: 'EmotionWave',
+              sentiment: 0,
+            }],
           }
         }
       }
