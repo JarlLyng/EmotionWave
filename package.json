@@ -1,7 +1,19 @@
 {
-  "name": "nuxt-app",
+  "name": "emotion-wave",
+  "version": "1.0.0",
+  "description": "A living website that visualizes the world's mood in real time through sentiment analysis of global news, generative visuals and ambient sound",
+  "license": "MIT",
+  "author": "Jarl Lyng",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JarlLyng/EmotionWave.git"
+  },
+  "homepage": "https://emotionwave.iamjarl.com",
   "private": true,
   "type": "module",
+  "overrides": {
+    "esbuild": "^0.28.1"
+  },
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
