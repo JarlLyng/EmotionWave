@@ -495,7 +495,7 @@ const handleInteraction = async () => {
   if (isPlaying.value && toneModule && toneModule.context.state === 'suspended') {
     try {
       await toneModule.context.resume()
-    } catch (e) {}
+    } catch {}
   }
 }
 
