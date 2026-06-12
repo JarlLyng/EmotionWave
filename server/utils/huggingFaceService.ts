@@ -24,7 +24,7 @@ interface HuggingFaceLabel {
   score: number
 }
 
-function parseHuggingFaceSentiment(data: unknown): number {
+export function parseHuggingFaceSentiment(data: unknown): number {
   let results = data
   while (Array.isArray(results) && results.length > 0 && Array.isArray(results[0])) {
     results = results[0]
