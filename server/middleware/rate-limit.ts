@@ -30,7 +30,7 @@ export default defineEventHandler((event) => {
 
   bucket.count++
   if (bucket.count > MAX_REQUESTS_PER_WINDOW) {
-    setResponseHeader(event, 'Retry-After', String(Math.ceil((bucket.resetAt - now) / 1000)))
+    setResponseHeader(event, 'Retry-After', Math.ceil((bucket.resetAt - now) / 1000))
     throw createError({ statusCode: 429, statusMessage: 'Too Many Requests' })
   }
 })
