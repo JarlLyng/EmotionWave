@@ -53,6 +53,32 @@ export default defineNuxtConfig({
     prerender: {
       crawlLinks: false,
       routes: ['/', '/robots.txt', '/sitemap.xml']
+    },
+    routeRules: {
+      '/**': {
+        headers: {
+          // 'unsafe-inline' in script-src is required by Nuxt's hydration payload
+          // and the inline JSON-LD block; connect-src covers the client-side
+          // GDELT fallback fetch and Umami analytics beacons.
+          'Content-Security-Policy': [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' https://umami-iamjarl.vercel.app",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data:",
+            "font-src 'self' data:",
+            "connect-src 'self' https://api.gdeltproject.org https://umami-iamjarl.vercel.app",
+            "worker-src 'self' blob:",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "frame-ancestors 'none'"
+          ].join('; '),
+          'X-Content-Type-Options': 'nosniff',
+          'X-Frame-Options': 'DENY',
+          'Referrer-Policy': 'strict-origin-when-cross-origin',
+          'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+          'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+        }
+      }
     }
   },
   app: {
