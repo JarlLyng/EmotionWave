@@ -135,7 +135,7 @@ describe('calculateWeightedSentiment', () => {
     ])
     expect(score).toBe(1)
     expect(sources).toHaveLength(1)
-    expect(sources[0].articles).toBe(2)
+    expect(sources[0]!.articles).toBe(2)
   })
 
   it('weights intense sources more than neutral ones', () => {
@@ -151,6 +151,6 @@ describe('calculateWeightedSentiment', () => {
       make('A', 5),
       make('A', 0),
     ])
-    expect(sources[0].score).toBe(normalizeSentiment(5))
+    expect(sources[0]!.score).toBe(normalizeSentiment(5))
   })
 })

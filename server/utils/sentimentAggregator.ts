@@ -57,8 +57,10 @@ export async function aggregateSentiment(
       const hfScores = await batchAnalyzeWithHuggingFace(textsToAnalyze, huggingFaceKey)
 
       for (const [index, score] of hfScores) {
-        const keywordScore = allArticles[index].sentiment
-        allArticles[index].sentiment = Math.max(-10, Math.min(10,
+        const article = allArticles[index]
+        if (!article) continue
+        const keywordScore = article.sentiment
+        article.sentiment = Math.max(-10, Math.min(10,
           score * 0.7 + keywordScore * 0.3
         ))
       }
