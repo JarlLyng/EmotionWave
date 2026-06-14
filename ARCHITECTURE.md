@@ -265,7 +265,7 @@ EmotionWave/
 
 ## Technology Stack
 
-- **Framework**: Nuxt 3.21.0 + Vite
+- **Framework**: Nuxt 4.4.8 + Vite
 - **UI**: TailwindCSS 4.1.18
 - **Visuals**: Three.js 0.182.0 (lazy loaded)
 - **Audio**: Tone.js 15.1.22 (lazy loaded)

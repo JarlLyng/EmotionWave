@@ -6,13 +6,15 @@ A living Nuxt-based website that reacts to the world's mood. Through real-time s
 
 🌐 **Live Site**: [https://emotionwave.iamjarl.com](https://emotionwave.iamjarl.com) (Vercel)
 
+[![EmotionWave — live particle visualization of global sentiment](./public/screenshot.jpg)](https://emotionwave.iamjarl.com)
+
 ## 🎯 Project Purpose
 
 Create a data-driven artwork where the website changes in real-time based on global sentiment. Users get a visual sense of "how the world feels" through an immersive experience combining visual and audio elements.
 
 ## 🛠️ Technologies
 
-- **Framework**: Nuxt 3.21.0 + Vite
+- **Framework**: Nuxt 4.4.8 + Vite
 - **UI**: TailwindCSS 4.1.18
 - **Visuals**: Three.js 0.182.0 for particle effects (lazy loaded)
 - **Audio**: Tone.js 15.1.22 for generative ambient sound (lazy loaded)
@@ -99,7 +101,7 @@ Create a data-driven artwork where the website changes in real-time based on glo
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/jarllyng/EmotionWave.git
+git clone https://github.com/JarlLyng/EmotionWave.git
 cd EmotionWave
 ```
 
@@ -185,4 +187,4 @@ For issues, questions, or contributions, please open an issue on GitHub.
 
 ---
 
-**Built with ❤️ using Nuxt 3, Vue 3, Three.js, and Tone.js**
+**Built with ❤️ using Nuxt 4, Vue 3, Three.js, and Tone.js**
