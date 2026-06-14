@@ -143,7 +143,12 @@
           <!-- Footer -->
           <div class="footer-section bg-white/5">
             <div class="flex flex-col gap-4">
-              <p class="text-white/30 text-sm">Built with Nuxt 3, Three.js and Tone.js</p>
+              <p class="text-white/50 text-sm">
+                <NuxtLink to="/about" class="underline underline-offset-4 hover:text-white/80 transition-colors">
+                  Read the full story — concept, methodology &amp; FAQ →
+                </NuxtLink>
+              </p>
+              <p class="text-white/30 text-sm">Built with Nuxt 4, Three.js and Tone.js</p>
 
               <!-- More from IAMJARL -->
               <div class="border-t border-white/10 pt-3">
