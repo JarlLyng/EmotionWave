@@ -12,7 +12,7 @@ Vercel supports serverless functions, enabling full API functionality.
 
 1. **Connect Repository**:
    - Import project from GitHub
-   - Vercel auto-detects Nuxt 3
+   - Vercel auto-detects Nuxt
 
 2. **Environment Variables**:
    ```
