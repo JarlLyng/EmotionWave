@@ -74,13 +74,15 @@ const colorAnchors = [
 
 function sentimentToColor(score: number): [number, number, number] {
   const clamped = Math.max(-1, Math.min(1, score))
-  let lower = colorAnchors[0]
-  let upper = colorAnchors[colorAnchors.length - 1]
+  let lower = colorAnchors[0]!
+  let upper = colorAnchors[colorAnchors.length - 1]!
 
   for (let i = 0; i < colorAnchors.length - 1; i++) {
-    if (clamped >= colorAnchors[i].s && clamped <= colorAnchors[i + 1].s) {
-      lower = colorAnchors[i]
-      upper = colorAnchors[i + 1]
+    const a = colorAnchors[i]!
+    const b = colorAnchors[i + 1]!
+    if (clamped >= a.s && clamped <= b.s) {
+      lower = a
+      upper = b
       break
     }
   }
@@ -242,15 +244,15 @@ const animate = (): void => {
     particles.rotation.x += 0.0003
     particles.rotation.y += 0.0004
 
-    const positions = particles.geometry.attributes.position.array as Float32Array
+    const positions = particles.geometry.attributes.position!.array as Float32Array
     const time = Date.now() * 0.0005
     const sentimentSpeed = 0.02 + Math.abs(score) * 0.04
 
     if (particlePhases) {
       for (let i = 0; i < positions.length; i += 3) {
-        const px = particlePhases[i]
-        const py = particlePhases[i + 1]
-        const pz = particlePhases[i + 2]
+        const px = particlePhases[i]!
+        const py = particlePhases[i + 1]!
+        const pz = particlePhases[i + 2]!
 
         // Three octaves of sine at incommensurate frequencies (pseudo-Perlin)
         const nx = Math.sin(time * 0.7 + px) * 0.5
@@ -261,47 +263,55 @@ const animate = (): void => {
                  + Math.sin(time * 1.1 + py * 1.7) * 0.3
                  + Math.sin(time * 2.3 + py * 1.3) * 0.2
 
-        positions[i] += nx * sentimentSpeed
-        positions[i + 1] += ny * sentimentSpeed
+        let x = positions[i]! + nx * sentimentSpeed
+        let y = positions[i + 1]! + ny * sentimentSpeed
+        let z = positions[i + 2]!
 
         // Z-axis drift for depth (skip on mobile)
         if (!isMobile) {
-          positions[i + 2] += Math.sin(time * 0.3 + pz) * sentimentSpeed * 0.3
+          z += Math.sin(time * 0.3 + pz) * sentimentSpeed * 0.3
         }
 
         // Soft wrapping instead of hard clamp
-        if (positions[i] > 55) positions[i] -= 110
-        else if (positions[i] < -55) positions[i] += 110
-        if (positions[i + 1] > 55) positions[i + 1] -= 110
-        else if (positions[i + 1] < -55) positions[i + 1] += 110
-        if (positions[i + 2] > 55) positions[i + 2] -= 110
-        else if (positions[i + 2] < -55) positions[i + 2] += 110
+        if (x > 55) x -= 110
+        else if (x < -55) x += 110
+        if (y > 55) y -= 110
+        else if (y < -55) y += 110
+        if (z > 55) z -= 110
+        else if (z < -55) z += 110
+
+        positions[i] = x
+        positions[i + 1] = y
+        positions[i + 2] = z
       }
 
-      particles.geometry.attributes.position.needsUpdate = true
+      particles.geometry.attributes.position!.needsUpdate = true
     }
   }
 
   // ── Color lerp ──
   if (colorsNeedUpdate) {
-    const colors = particles.geometry.attributes.color.array as Float32Array
+    const colors = particles.geometry.attributes.color!.array as Float32Array
     const lerpFactor = 0.015
     let stillLerping = false
 
     for (let i = 0; i < colors.length; i += 3) {
-      const dr = currentTargetR - colors[i]
-      const dg = currentTargetG - colors[i + 1]
-      const db = currentTargetB - colors[i + 2]
+      const cr = colors[i]!
+      const cg = colors[i + 1]!
+      const cb = colors[i + 2]!
+      const dr = currentTargetR - cr
+      const dg = currentTargetG - cg
+      const db = currentTargetB - cb
 
       if (Math.abs(dr) > 0.005 || Math.abs(dg) > 0.005 || Math.abs(db) > 0.005) {
-        colors[i] += dr * lerpFactor
-        colors[i + 1] += dg * lerpFactor
-        colors[i + 2] += db * lerpFactor
+        colors[i] = cr + dr * lerpFactor
+        colors[i + 1] = cg + dg * lerpFactor
+        colors[i + 2] = cb + db * lerpFactor
         stillLerping = true
       }
     }
 
-    particles.geometry.attributes.color.needsUpdate = true
+    particles.geometry.attributes.color!.needsUpdate = true
     if (!stillLerping) colorsNeedUpdate = false
   }
 
@@ -369,22 +379,24 @@ const updateMousePosition = (event: MouseEvent) => {
     mousePosition.y = y * (1 + score * 0.5)
 
     if (particles) {
-      const positions = particles.geometry.attributes.position.array as Float32Array
+      const positions = particles.geometry.attributes.position!.array as Float32Array
       const mouseInfluence = 0.08
 
       for (let i = 0; i < positions.length; i += 3) {
-        const dx = positions[i] - mousePosition.x * 50
-        const dy = positions[i + 1] - mousePosition.y * 50
+        const xi = positions[i]!
+        const yi = positions[i + 1]!
+        const dx = xi - mousePosition.x * 50
+        const dy = yi - mousePosition.y * 50
         const distance = Math.sqrt(dx * dx + dy * dy)
 
         if (distance < 20) {
           const force = (1 - distance / 20) * mouseInfluence
-          positions[i] += dx * force
-          positions[i + 1] += dy * force
+          positions[i] = xi + dx * force
+          positions[i + 1] = yi + dy * force
         }
       }
 
-      particles.geometry.attributes.position.needsUpdate = true
+      particles.geometry.attributes.position!.needsUpdate = true
     }
 
     mouseUpdateTimeout = null
