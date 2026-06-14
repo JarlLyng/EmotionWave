@@ -21,6 +21,12 @@ export default defineEventHandler((event) => {
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
+  <url>
+    <loc>${domain}/about</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
 </urlset>`
   
   event.node.res.setHeader('Content-Type', 'application/xml')

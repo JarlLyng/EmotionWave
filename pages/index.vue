@@ -58,8 +58,13 @@ const structuredData = {
   isAccessibleForFree: true
 }
 
-// Add structured data to head using useHead
+// Add structured data to head using useHead.
+// `app-locked` on <body> keeps the fullscreen art from scrolling or
+// selecting; content pages (e.g. /about) omit it so they behave normally.
 useHead({
+  bodyAttrs: {
+    class: 'app-locked'
+  },
   script: [
     {
       type: 'application/ld+json',
