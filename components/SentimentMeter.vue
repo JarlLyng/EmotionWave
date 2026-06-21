@@ -40,8 +40,8 @@ const props = defineProps<{
   isUsingFallback?: boolean
 }>()
 
-const emit = defineEmits<{
-  (e: 'retry'): void
+defineEmits<{
+  retry: []
 }>()
 
 const sentimentScore = computed(() => {

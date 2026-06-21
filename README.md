@@ -159,12 +159,14 @@ The application will be available at `http://localhost:3000`
 - Service worker uses secure context
 - HTTPS required for PWA features
 
-## 📈 Performance Metrics
+## 📈 Performance
 
-- **Initial Load**: < 3s on 3G
-- **Time to Interactive**: < 5s
-- **Bundle Size**: ~700KB (gzipped)
-- **Lighthouse Score**: 90+ (Performance)
+Performance-focused by design:
+
+- **Lazy loading**: Three.js and Tone.js are loaded on demand, kept out of the initial bundle
+- **GPU-accelerated rendering**: WebGL with device-aware particle counts (1000 on mobile, 2000 on desktop)
+- **Server-side caching**: 30-second cache on the sentiment API to limit upstream calls
+- **Bundle size**: ~635KB gzipped production build
 
 ## 🤝 Contributing
 
