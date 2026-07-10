@@ -34,4 +34,23 @@ describe('retryWithBackoff', () => {
     expect(fn).toHaveBeenCalledTimes(3)
     vi.useRealTimers()
   })
+
+  it('fails fast on permanent 4xx errors without retrying', async () => {
+    const fn = vi.fn().mockRejectedValue(new Error('GDELT API error: 404'))
+    await expect(retryWithBackoff(fn, 3, 100)).rejects.toThrow('404')
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('still retries on 429 rate limiting', async () => {
+    vi.useFakeTimers()
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('API error: 429'))
+      .mockResolvedValue('ok')
+
+    const promise = retryWithBackoff(fn, 3, 100)
+    await vi.advanceTimersByTimeAsync(100)
+    await expect(promise).resolves.toBe('ok')
+    expect(fn).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
 })

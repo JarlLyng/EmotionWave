@@ -33,24 +33,28 @@ export interface BaseSentimentData {
 
 // ─── Pre-compiled regex patterns ─────────────────────────────────────────────
 
+// Word-boundary anchored so short stems don't match inside unrelated words
+// (e.g. "war" in hardware/award, "win" in window). English words use full
+// \b…\b with common inflections; Danish stems use a leading \b only so
+// suffixed forms (krigen, krisen, katastrofen) still match.
 const positiveWords: Array<[RegExp, number]> = [
-  [/excellent/g, 0.3], [/amazing/g, 0.3], [/wonderful/g, 0.3], [/fantastic/g, 0.3],
-  [/great/g, 0.2], [/good/g, 0.15], [/positive/g, 0.2], [/success/g, 0.25],
-  [/win/g, 0.2], [/victory/g, 0.25], [/achievement/g, 0.2], [/breakthrough/g, 0.3],
-  [/help/g, 0.1], [/support/g, 0.15], [/love/g, 0.2], [/hope/g, 0.15],
-  [/progress/g, 0.2], [/improvement/g, 0.2], [/growth/g, 0.2], [/prosperity/g, 0.25],
-  [/peace/g, 0.2], [/unity/g, 0.15], [/cooperation/g, 0.15], [/innovation/g, 0.2],
-  [/fantastisk/g, 0.3], [/fremgang/g, 0.2], [/lykkedes/g, 0.2], [/succes/g, 0.2],
+  [/\bexcellent\b/g, 0.3], [/\bamazing\b/g, 0.3], [/\bwonderful\b/g, 0.3], [/\bfantastic\b/g, 0.3],
+  [/\bgreat\b/g, 0.2], [/\bgood\b/g, 0.15], [/\bpositive\b/g, 0.2], [/\bsuccess(ful|es)?\b/g, 0.25],
+  [/\bwins?\b/g, 0.2], [/\bvictor(y|ies)\b/g, 0.25], [/\bachievements?\b/g, 0.2], [/\bbreakthroughs?\b/g, 0.3],
+  [/\bhelps?\b/g, 0.1], [/\bsupports?\b/g, 0.15], [/\blove[ds]?\b/g, 0.2], [/\bhopes?\b/g, 0.15],
+  [/\bprogress\b/g, 0.2], [/\bimprovements?\b/g, 0.2], [/\bgrowth\b/g, 0.2], [/\bprosperity\b/g, 0.25],
+  [/\bpeace(ful)?\b/g, 0.2], [/\bunity\b/g, 0.15], [/\bcooperation\b/g, 0.15], [/\binnovations?\b/g, 0.2],
+  [/\bfantastisk/g, 0.3], [/\bfremgang/g, 0.2], [/\blykkedes\b/g, 0.2], [/\bsucces\b/g, 0.2],
 ]
 
 const negativeWords: Array<[RegExp, number]> = [
-  [/terrible/g, 0.3], [/awful/g, 0.3], [/horrible/g, 0.3], [/disaster/g, 0.3],
-  [/bad/g, 0.15], [/negative/g, 0.2], [/fail/g, 0.2], [/failure/g, 0.25],
-  [/loss/g, 0.2], [/crisis/g, 0.3], [/war/g, 0.3], [/conflict/g, 0.25],
-  [/hate/g, 0.25], [/angry/g, 0.2], [/fear/g, 0.2], [/violence/g, 0.3],
-  [/death/g, 0.3], [/attack/g, 0.3], [/destruction/g, 0.3], [/collapse/g, 0.25],
-  [/dårlig/g, 0.2], [/katastrofe/g, 0.3], [/fejlet/g, 0.2], [/krise/g, 0.3],
-  [/krig/g, 0.3], [/vold/g, 0.25], [/frygt/g, 0.2],
+  [/\bterrible\b/g, 0.3], [/\bawful\b/g, 0.3], [/\bhorrible\b/g, 0.3], [/\bdisasters?\b/g, 0.3],
+  [/\bbad\b/g, 0.15], [/\bnegative\b/g, 0.2], [/\bfail(s|ed|ing)?\b/g, 0.2], [/\bfailures?\b/g, 0.25],
+  [/\bloss(es)?\b/g, 0.2], [/\bcris(is|es)\b/g, 0.3], [/\bwars?\b/g, 0.3], [/\bconflicts?\b/g, 0.25],
+  [/\bhate[ds]?\b/g, 0.25], [/\bangry\b/g, 0.2], [/\bfears?\b/g, 0.2], [/\bviolen(ce|t)\b/g, 0.3],
+  [/\bdeaths?\b/g, 0.3], [/\battacks?\b/g, 0.3], [/\bdestruction\b/g, 0.3], [/\bcollapsed?\b/g, 0.25],
+  [/\bdårlig/g, 0.2], [/\bkatastrofe/g, 0.3], [/\bfejlede?\b/g, 0.2], [/\bkrise/g, 0.3],
+  [/\bkrig/g, 0.3], [/\bvold\b/g, 0.25], [/\bfrygt/g, 0.2],
 ]
 
 // ─── Core functions ──────────────────────────────────────────────────────────

@@ -2,21 +2,6 @@ import { ref } from 'vue'
 import { fetchGDELTSentiment } from './useGDELT'
 import type { BaseSentimentData } from '~/utils/sentiment'
 
-interface SentimentData {
-  score: number
-  details: {
-    positive: number
-    negative: number
-    neutral: number
-  }
-  articles?: Array<{
-    title: string
-    url: string
-    source: string
-    sentiment: number
-  }>
-}
-
 interface SourceEntry {
   name: string
   score: number
@@ -35,11 +20,6 @@ interface ArticleEntry {
 export function useSentiment() {
   const sentimentScore = ref(0)
   const targetScore = ref(0)
-  const sentimentDetails = ref<SentimentData['details']>({
-    positive: 0,
-    negative: 0,
-    neutral: 0,
-  })
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const isUsingFallback = ref(false)
@@ -100,23 +80,18 @@ export function useSentiment() {
       const baseUrlObj = new URL(baseURL, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
       const apiUrl = new URL('api/advanced-sentiment', baseUrlObj).toString()
 
-      // Try server API and GDELT client-side in parallel — use whichever succeeds first
-      const serverPromise = fetch(apiUrl).then(async (response) => {
-        if (!response.ok) throw new Error(`API returned ${response.status}`)
-        return await response.json() as BaseSentimentData & { articles?: ArticleEntry[] }
-      })
-
-      const gdeltPromise = fetchGDELTSentiment()
-
-      // Race: prefer server API (has more sources), but accept GDELT if server fails
       let data: BaseSentimentData & { articles?: ArticleEntry[] }
       try {
-        data = await serverPromise
+        const response = await fetch(apiUrl)
+        if (!response.ok) throw new Error(`API returned ${response.status}`)
+        data = await response.json() as BaseSentimentData & { articles?: ArticleEntry[] }
         isUsingFallback.value = false
       } catch {
-        // Server failed — use GDELT client-side result
+        // Server failed — fall back to client-side GDELT. Fetched lazily so a
+        // healthy server API doesn't cost every visitor an extra GDELT request
+        // per poll whose result would just be discarded.
         try {
-          data = await gdeltPromise
+          data = await fetchGDELTSentiment()
           isUsingFallback.value = false
         } catch {
           // Both failed — use time-based fallback
@@ -192,7 +167,6 @@ export function useSentiment() {
 
   return {
     sentimentScore,
-    sentimentDetails,
     isLoading,
     error,
     isUsingFallback,

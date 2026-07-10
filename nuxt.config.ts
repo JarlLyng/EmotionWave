@@ -52,7 +52,7 @@ export default defineNuxtConfig({
   nitro: {
     prerender: {
       crawlLinks: false,
-      routes: ['/', '/robots.txt', '/sitemap.xml']
+      routes: ['/', '/about', '/robots.txt', '/sitemap.xml']
     },
     routeRules: {
       '/**': {
@@ -82,9 +82,7 @@ export default defineNuxtConfig({
     }
   },
   app: {
-    // Use environment variable, default to / for production (Vercel is primary deployment)
-    // Vercel should set NUXT_PUBLIC_BASE_URL=/ in environment variables
-    // For GitHub Pages (if needed), set NUXT_PUBLIC_BASE_URL=/EmotionWave/
+    // Use environment variable, default to / (Vercel is the primary deployment)
     baseURL: process.env.NUXT_PUBLIC_BASE_URL || '/',
     buildAssetsDir: '_nuxt/',
     head: {

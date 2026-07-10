@@ -87,14 +87,26 @@ watch(() => validArticles.value.length, (newLength) => {
   }
 }, { immediate: true })
 
+// Pause rotation while the tab is hidden — no reason to churn timers
+// (and burn the fade transition) for a page nobody is looking at
+function handleVisibilityChange() {
+  if (document.hidden) {
+    stopRotation()
+  } else if (validArticles.value.length > 1) {
+    startRotation()
+  }
+}
+
 onMounted(() => {
   if (validArticles.value.length > 0) {
     currentIndex.value = Math.floor(Math.random() * validArticles.value.length)
     startRotation()
   }
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
   stopRotation()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
