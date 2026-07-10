@@ -11,9 +11,12 @@ import { GDELTResponseSchema } from './schemas'
 export async function fetchGDELTNews(): Promise<Article[]> {
   const dateRange = getDateRange()
 
+  // Total worst case must stay under the endpoint's 8s aggregation deadline
+  // (2 attempts × 3.5s timeout + 0.5s backoff ≈ 7.5s), so a hanging GDELT
+  // still leaves room to serve partial data from the other sources.
   return retryWithBackoff(async () => {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 8000)
+    const timeoutId = setTimeout(() => controller.abort(), 3500)
 
     try {
       const response = await fetch(
@@ -46,5 +49,5 @@ export async function fetchGDELTNews(): Promise<Article[]> {
       clearTimeout(timeoutId)
       throw error
     }
-  })
+  }, 2, 500)
 }

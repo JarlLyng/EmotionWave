@@ -49,10 +49,13 @@ export async function aggregateSentiment(
 
   if (huggingFaceKey) {
     try {
+      // Top 10 only (as documented in README/ARCHITECTURE): at concurrency 5
+      // that's 2 waves ≈ 2-4s, which fits the endpoint's 8s deadline. 30
+      // articles took 6 waves and regularly blew past it on a cold cache.
       const textsToAnalyze = allArticles
         .map((a, i) => ({ text: `${a.title} ${a.source}`.trim(), index: i }))
         .filter(({ text }) => text.length > 10)
-        .slice(0, 30)
+        .slice(0, 10)
 
       const hfScores = await batchAnalyzeWithHuggingFace(textsToAnalyze, huggingFaceKey)
 

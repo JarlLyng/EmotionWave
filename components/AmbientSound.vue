@@ -21,7 +21,7 @@
     <div v-if="isPlaying" class="volume-control">
       <input
         type="range"
-        v-model="volume"
+        v-model.number="volume"
         min="0"
         max="1"
         step="0.01"

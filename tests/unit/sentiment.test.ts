@@ -47,6 +47,21 @@ describe('keywordBasedSentiment', () => {
     expect(score).toBeGreaterThanOrEqual(-10)
     expect(score).toBeLessThanOrEqual(10)
   })
+
+  it('does not match keyword stems inside unrelated words', () => {
+    // "war" in hardware/award, "win" in window/winter, "hope" in Hopewell
+    expect(keywordBasedSentiment('New hardware and software awards announced')).toBe(0)
+    expect(keywordBasedSentiment('Window displays draw crowds this winter')).toBe(0)
+  })
+
+  it('still matches common inflections at word boundaries', () => {
+    expect(keywordBasedSentiment('Wars and conflicts escalate as attacks continue')).toBeLessThan(0)
+    expect(keywordBasedSentiment('Team wins after years of breakthroughs')).toBeGreaterThan(0)
+  })
+
+  it('matches Danish suffixed forms', () => {
+    expect(keywordBasedSentiment('krigen og krisen fortsætter efter katastrofen')).toBeLessThan(0)
+  })
 })
 
 describe('getDynamicFallbackData', () => {
