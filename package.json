@@ -12,7 +12,8 @@
   "private": true,
   "type": "module",
   "overrides": {
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "@bomb.sh/tab": "^0.0.22"
   },
   "scripts": {
     "build": "nuxt build",
@@ -42,6 +43,7 @@
     "@typescript-eslint/parser": "^8.53.1",
     "@vite-pwa/nuxt": "^1.1.1",
     "autoprefixer": "^10.4.23",
+    "commander": "^15.0.0",
     "eslint": "^10.5.0",
     "eslint-plugin-vue": "^10.9.2",
     "globals": "^17.6.0",
