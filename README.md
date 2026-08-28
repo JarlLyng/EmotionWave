@@ -27,6 +27,7 @@ Create a data-driven artwork where the website changes in real-time based on glo
 ### Visual Expression
 - Dynamic particle system that reacts to sentiment (1000-2000 particles based on device)
 - Color transitions based on mood with smooth animations
+- **Emotion-aware palette**: when emotion analysis is available, colors blend distinct hues for anger, fear, joy, sadness, surprise and disgust instead of a single negative-positive axis
 - Interactive mouse-based particle movement
 - Smooth 60fps animations and transitions
 - Responsive design with mobile optimization
@@ -52,6 +53,7 @@ Create a data-driven artwork where the website changes in real-time based on glo
 
 ### Sentiment Analysis
 - **Multi-source aggregation**: Combines data from GDELT API, NewsAPI (optional), and Reddit
+- **Emotion categories**: headlines are also classified into seven emotions (Ekman 6 + neutral) and aggregated into a "world emotion" that drives the palette and musical scale
 - **Advanced analysis**: Optional HuggingFace Inference API integration for improved sentiment detection
   - Strategically used on top 10 articles for balance between accuracy and performance
   - Remaining articles use fast keyword-based analysis

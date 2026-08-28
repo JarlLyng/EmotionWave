@@ -16,8 +16,11 @@ import type {
   Scene, PerspectiveCamera, WebGLRenderer, Points, Color, FogExp2,
 } from 'three'
 
+import { emotionToColor, type EmotionState } from '~/utils/sentiment'
+
 const props = defineProps<{
   sentimentScore?: number
+  emotion?: EmotionState | null
 }>()
 
 const container = ref<HTMLDivElement | null>(null)
@@ -341,7 +344,10 @@ const animate = (): void => {
 // ─── Sentiment update ────────────────────────────────────────────────────────
 
 function updateSentimentTargets(score: number) {
-  const [r, g, b] = sentimentToColor(score)
+  // Emotion vector (when the server provides one) paints richer hues than the
+  // single sentiment axis: blended non-neutral anchors, pulled toward slate
+  // by the neutral share. Falls back to the classic score gradient.
+  const [r, g, b] = props.emotion ? emotionToColor(props.emotion) : sentimentToColor(score)
   currentTargetR = r
   currentTargetG = g
   currentTargetB = b
@@ -352,12 +358,15 @@ function updateSentimentTargets(score: number) {
   targetBgG = g * 0.12
   targetBgB = b * 0.12
 
-  // Bloom: dimmer for negative, brighter for positive
-  const baseStrength = mapRange(score, -1, 1, 0.8, 2.0)
+  // Bloom: with emotion data, glow follows how strongly the world feels
+  // anything (intensity); otherwise dimmer for negative, brighter for positive
+  const baseStrength = props.emotion
+    ? mapRange(props.emotion.intensity, 0, 1, 0.8, 2.0)
+    : mapRange(score, -1, 1, 0.8, 2.0)
   targetBloomStrength = isMobile ? baseStrength * 0.6 : baseStrength
 }
 
-watch(() => props.sentimentScore, () => {
+watch([() => props.sentimentScore, () => props.emotion], () => {
   updateSentimentTargets(props.sentimentScore ?? 0)
 })
 

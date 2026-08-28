@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { fetchGDELTSentiment } from './useGDELT'
-import type { BaseSentimentData } from '~/utils/sentiment'
+import type { BaseSentimentData, EmotionState } from '~/utils/sentiment'
 
 interface SourceEntry {
   name: string
@@ -14,6 +14,8 @@ interface ArticleEntry {
   sentiment?: number
 }
 
+type SentimentPayload = BaseSentimentData & { articles?: ArticleEntry[]; emotion?: EmotionState }
+
 /**
  * Composable for managing sentiment data
  */
@@ -25,6 +27,9 @@ export function useSentiment() {
   const isUsingFallback = ref(false)
   const sources = ref<Record<string, number>>({})
   const articles = ref<Array<{ title: string; url: string; source: string; sentiment: number }>>([])
+  // World-emotion state from the server (issue #30); null when unavailable.
+  // Components lerp their own visuals, so no client-side animation needed here.
+  const emotion = ref<EmotionState | null>(null)
 
   let intervalId: ReturnType<typeof setInterval> | null = null
   let animationFrameId: number | null = null
@@ -42,8 +47,9 @@ export function useSentiment() {
     animationFrameId = requestAnimationFrame(animateTransition)
   }
 
-  function applyData(data: BaseSentimentData & { articles?: ArticleEntry[] }) {
+  function applyData(data: SentimentPayload) {
     targetScore.value = data.score
+    emotion.value = data.emotion ?? null
 
     if (data.sources) {
       sources.value = data.sources.reduce((acc: Record<string, number>, source: SourceEntry) => {
@@ -80,11 +86,11 @@ export function useSentiment() {
       const baseUrlObj = new URL(baseURL, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
       const apiUrl = new URL('api/advanced-sentiment', baseUrlObj).toString()
 
-      let data: BaseSentimentData & { articles?: ArticleEntry[] }
+      let data: SentimentPayload
       try {
         const response = await fetch(apiUrl)
         if (!response.ok) throw new Error(`API returned ${response.status}`)
-        data = await response.json() as BaseSentimentData & { articles?: ArticleEntry[] }
+        data = await response.json() as SentimentPayload
         isUsingFallback.value = false
       } catch {
         // Server failed — fall back to client-side GDELT. Fetched lazily so a
@@ -167,6 +173,7 @@ export function useSentiment() {
 
   return {
     sentimentScore,
+    emotion,
     isLoading,
     error,
     isUsingFallback,

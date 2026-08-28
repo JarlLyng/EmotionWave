@@ -142,6 +142,7 @@ This document describes the technical architecture and component structure of Em
   - Provides fallback data when APIs unavailable
 - **Key Features**:
   - **Multi-source aggregation**: Combines data from multiple APIs for better accuracy
+  - **Emotion categories**: the same top articles are classified with j-hartmann/emotion-english-distilroberta-base (7 emotions); distributions are averaged, renormalized over the non-neutral classes, and returned as an `emotion` state (vector, dominant, intensity) that drives the color palette and musical scale (with hysteresis)
   - **HuggingFace integration**: Optional advanced sentiment analysis via Inference API
     - Strategically used on top 10 articles only (prevents timeouts, maintains accuracy)
     - Remaining articles use fast keyword-based analysis

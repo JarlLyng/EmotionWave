@@ -39,8 +39,11 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 
+import type { EmotionState } from '~/utils/sentiment'
+
 const props = defineProps<{
   sentimentScore: number
+  emotion?: EmotionState | null
 }>()
 
 const isPlaying = ref(false)
@@ -86,6 +89,41 @@ let noiseCrossfadeTimeout: ReturnType<typeof setTimeout> | null = null
 
 const PENTATONIC_MINOR = ['C3', 'Eb3', 'F3', 'G3', 'Bb3', 'C4', 'Eb4']
 const PENTATONIC_MAJOR = ['C3', 'D3', 'E3', 'G3', 'A3', 'C4', 'D4', 'E4']
+
+// Dominant emotion → musical bucket (issue #30). Hysteresis below prevents
+// jarring scale flips when the dominant label flickers between polls.
+const EMOTION_TO_BUCKET: Record<string, keyof typeof CHORD_VARIATIONS> = {
+  joy: 'positive',
+  surprise: 'neutralPos',
+  sadness: 'neutralNeg',
+  disgust: 'neutralNeg',
+  fear: 'negative',
+  anger: 'negative',
+}
+
+let stableDominant: string | null = null
+let pendingDominant: string | null = null
+
+/** Returns the musically active bucket, or null to fall back to score buckets */
+function emotionBucket(): keyof typeof CHORD_VARIATIONS | null {
+  const dominant = props.emotion?.dominant ?? null
+  if (!dominant) { stableDominant = null; pendingDominant = null; return null }
+
+  if (dominant === stableDominant) {
+    pendingDominant = null
+  } else if (dominant === pendingDominant) {
+    // Seen twice in a row — commit the switch
+    stableDominant = dominant
+    pendingDominant = null
+  } else if (stableDominant === null) {
+    // First reading: adopt immediately
+    stableDominant = dominant
+  } else {
+    pendingDominant = dominant
+  }
+
+  return stableDominant ? EMOTION_TO_BUCKET[stableDominant] ?? null : null
+}
 
 const CHORD_VARIATIONS = {
   negative: [
@@ -239,22 +277,17 @@ const playMelodicEvent = () => {
   const score = props.sentimentScore ?? 0
   const now = Tone.now()
 
-  // Pick chord variation
-  let chords: string[][]
-  let scale: string[]
-  if (score <= -0.5) {
-    chords = CHORD_VARIATIONS.negative
-    scale = PENTATONIC_MINOR
-  } else if (score <= 0) {
-    chords = CHORD_VARIATIONS.neutralNeg
-    scale = PENTATONIC_MINOR
-  } else if (score <= 0.5) {
-    chords = CHORD_VARIATIONS.neutralPos
-    scale = PENTATONIC_MAJOR
-  } else {
-    chords = CHORD_VARIATIONS.positive
-    scale = PENTATONIC_MAJOR
+  // Pick chord variation — dominant emotion decides when available (with
+  // hysteresis); otherwise fall back to the classic score buckets
+  let bucket = emotionBucket()
+  if (!bucket) {
+    if (score <= -0.5) bucket = 'negative'
+    else if (score <= 0) bucket = 'neutralNeg'
+    else if (score <= 0.5) bucket = 'neutralPos'
+    else bucket = 'positive'
   }
+  const chords = CHORD_VARIATIONS[bucket]
+  const scale = (bucket === 'positive' || bucket === 'neutralPos') ? PENTATONIC_MAJOR : PENTATONIC_MINOR
 
   const chord = chords[chordIndex % chords.length]
   chordIndex++
