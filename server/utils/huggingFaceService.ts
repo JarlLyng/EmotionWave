@@ -1,7 +1,10 @@
 import { HuggingFaceResponseSchema } from './schemas'
 
-const HF_ROUTER_URL = 'https://router.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest'
-const HF_INFERENCE_URL = 'https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest'
+// HF moved model inference to the /hf-inference/ provider path; the old
+// router.huggingface.co/models/* path 404s and the legacy
+// api-inference.huggingface.co host no longer resolves at all. With both
+// endpoints dead the HF refinement silently degraded to keyword scores.
+const HF_ROUTER_URL = 'https://router.huggingface.co/hf-inference/models/cardiffnlp/twitter-roberta-base-sentiment-latest'
 
 const articleCache = new Map<string, number>()
 const MAX_CACHE_SIZE = 1000
@@ -72,7 +75,7 @@ async function analyzeSentimentWithHuggingFace(text: string, apiKey: string): Pr
     'Content-Type': 'application/json',
   }
 
-  const endpoints = [HF_ROUTER_URL, HF_INFERENCE_URL]
+  const endpoints = [HF_ROUTER_URL]
 
   for (const endpoint of endpoints) {
     try {
