@@ -1,17 +1,21 @@
 import {
   type Article,
   type BaseSentimentData,
+  type EmotionState,
   getDynamicFallbackData as getBaseFallbackData,
   calculateWeightedSentiment,
+  aggregateEmotionVectors,
 } from '~/utils/sentiment'
 import { fetchGDELTNews } from './gdeltService'
 import { fetchNewsAPINews } from './newsApiService'
 import { fetchRedditSentiment } from './redditService'
-import { batchAnalyzeWithHuggingFace } from './huggingFaceService'
+import { batchAnalyzeWithHuggingFace, batchAnalyzeEmotions } from './huggingFaceService'
 
 export interface ServerSentimentData extends BaseSentimentData {
   apiSources: string[]
   articles?: Article[]
+  /** World-emotion state (issue #30); absent when HF is unavailable */
+  emotion?: EmotionState
 }
 
 export async function aggregateSentiment(
@@ -47,6 +51,8 @@ export async function aggregateSentiment(
     return { ...fallback, apiSources: ['Fallback'], articles: [] }
   }
 
+  let emotion: EmotionState | undefined
+
   if (huggingFaceKey) {
     try {
       // Top 10 only (as documented in README/ARCHITECTURE): at concurrency 5
@@ -57,7 +63,12 @@ export async function aggregateSentiment(
         .filter(({ text }) => text.length > 10)
         .slice(0, 10)
 
-      const hfScores = await batchAnalyzeWithHuggingFace(textsToAnalyze, huggingFaceKey)
+      // Sentiment refinement and emotion classification run in parallel on
+      // the same texts, so wall time stays at ~2 waves despite two models.
+      const [hfScores, emotionVectors] = await Promise.all([
+        batchAnalyzeWithHuggingFace(textsToAnalyze, huggingFaceKey),
+        batchAnalyzeEmotions(textsToAnalyze, huggingFaceKey),
+      ])
 
       for (const [index, score] of hfScores) {
         const article = allArticles[index]
@@ -67,6 +78,8 @@ export async function aggregateSentiment(
           score * 0.7 + keywordScore * 0.3
         ))
       }
+
+      emotion = aggregateEmotionVectors([...emotionVectors.values()]) ?? undefined
 
       if (hfScores.size > 0) apiSources.push('HuggingFace')
     } catch (error) {
@@ -83,5 +96,6 @@ export async function aggregateSentiment(
     timestamp: Date.now(),
     apiSources,
     articles: articlesWithTitles.slice(0, 50),
+    emotion,
   }
 }

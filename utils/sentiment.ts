@@ -31,6 +31,95 @@ export interface BaseSentimentData {
   }>
 }
 
+// ─── Emotion categories (issue #30) ──────────────────────────────────────────
+// Labels match j-hartmann/emotion-english-distilroberta-base (Ekman 6 + neutral)
+
+export const EMOTION_LABELS = ['anger', 'disgust', 'fear', 'joy', 'neutral', 'sadness', 'surprise'] as const
+export type EmotionLabel = (typeof EMOTION_LABELS)[number]
+export type EmotionVector = Record<EmotionLabel, number>
+
+export interface EmotionState {
+  /** Raw averaged distribution across analyzed articles (sums to ~1, incl. neutral) */
+  vector: EmotionVector
+  /** Argmax over the non-neutral classes after renormalization */
+  dominant: Exclude<EmotionLabel, 'neutral'>
+  /** 1 - neutral share: how strongly the world feels *anything* right now */
+  intensity: number
+}
+
+const NON_NEUTRAL = EMOTION_LABELS.filter(l => l !== 'neutral') as Array<Exclude<EmotionLabel, 'neutral'>>
+
+export function emptyEmotionVector(): EmotionVector {
+  return { anger: 0, disgust: 0, fear: 0, joy: 0, neutral: 0, sadness: 0, surprise: 0 }
+}
+
+/**
+ * Aggregate per-article emotion distributions into one world-emotion state.
+ * News-headline models over-report neutral, so the dominant label is chosen
+ * over the renormalized non-neutral classes and neutral only dampens intensity.
+ */
+export function aggregateEmotionVectors(vectors: EmotionVector[]): EmotionState | null {
+  if (vectors.length === 0) return null
+
+  const sum = emptyEmotionVector()
+  for (const v of vectors) {
+    for (const label of EMOTION_LABELS) sum[label] += v[label] ?? 0
+  }
+
+  const total = EMOTION_LABELS.reduce((acc, l) => acc + sum[l], 0)
+  if (total <= 0) return null
+
+  const vector = emptyEmotionVector()
+  for (const label of EMOTION_LABELS) vector[label] = sum[label] / total
+
+  let dominant: Exclude<EmotionLabel, 'neutral'> = 'joy'
+  let best = -1
+  for (const label of NON_NEUTRAL) {
+    if (vector[label] > best) { best = vector[label]; dominant = label }
+  }
+
+  return {
+    vector,
+    dominant,
+    intensity: Math.max(0, Math.min(1, 1 - vector.neutral)),
+  }
+}
+
+/** RGB anchors per emotion, tuned to read distinctly against the dark background */
+export const EMOTION_COLOR_ANCHORS: Record<Exclude<EmotionLabel, 'neutral'>, [number, number, number]> = {
+  joy: [0.95, 0.75, 0.20],      // warm gold (matches the +1 sentiment anchor)
+  surprise: [0.55, 0.85, 0.95], // bright cyan
+  fear: [0.45, 0.25, 0.65],     // cold violet
+  anger: [0.85, 0.18, 0.18],    // deep red
+  sadness: [0.20, 0.30, 0.55],  // desaturated blue
+  disgust: [0.45, 0.55, 0.20],  // sickly yellow-green
+}
+
+const NEUTRAL_COLOR: [number, number, number] = [0.25, 0.35, 0.50] // slate (matches the 0 anchor)
+
+/**
+ * Blend emotion distribution into one RGB colour: weighted mix of the
+ * non-neutral anchors, pulled toward neutral slate by the neutral share.
+ */
+export function emotionToColor(state: EmotionState): [number, number, number] {
+  const nonNeutralTotal = NON_NEUTRAL.reduce((acc, l) => acc + state.vector[l], 0)
+  if (nonNeutralTotal <= 0) return [...NEUTRAL_COLOR]
+
+  const mixed: [number, number, number] = [0, 0, 0]
+  for (const label of NON_NEUTRAL) {
+    const w = state.vector[label] / nonNeutralTotal
+    const [r, g, b] = EMOTION_COLOR_ANCHORS[label]
+    mixed[0] += r * w; mixed[1] += g * w; mixed[2] += b * w
+  }
+
+  const t = state.intensity
+  return [
+    NEUTRAL_COLOR[0] + (mixed[0] - NEUTRAL_COLOR[0]) * t,
+    NEUTRAL_COLOR[1] + (mixed[1] - NEUTRAL_COLOR[1]) * t,
+    NEUTRAL_COLOR[2] + (mixed[2] - NEUTRAL_COLOR[2]) * t,
+  ]
+}
+
 // ─── Pre-compiled regex patterns ─────────────────────────────────────────────
 
 // Word-boundary anchored so short stems don't match inside unrelated words

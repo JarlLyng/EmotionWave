@@ -1,12 +1,15 @@
 import { HuggingFaceResponseSchema } from './schemas'
+import { type EmotionVector, EMOTION_LABELS, emptyEmotionVector } from '../../utils/sentiment'
 
 // HF moved model inference to the /hf-inference/ provider path; the old
 // router.huggingface.co/models/* path 404s and the legacy
 // api-inference.huggingface.co host no longer resolves at all. With both
 // endpoints dead the HF refinement silently degraded to keyword scores.
 const HF_ROUTER_URL = 'https://router.huggingface.co/hf-inference/models/cardiffnlp/twitter-roberta-base-sentiment-latest'
+const HF_EMOTION_URL = 'https://router.huggingface.co/hf-inference/models/j-hartmann/emotion-english-distilroberta-base'
 
 const articleCache = new Map<string, number>()
+const emotionCache = new Map<string, EmotionVector>()
 const MAX_CACHE_SIZE = 1000
 
 function smartTruncate(text: string, limit: number): string {
@@ -115,6 +118,89 @@ async function analyzeSentimentWithHuggingFace(text: string, apiKey: string): Pr
   }
 
   throw new Error('All HuggingFace endpoints failed')
+}
+
+/**
+ * Parse an emotion-classification response into a normalized 7-dim vector.
+ * Returns null when no known emotion labels are present.
+ */
+export function parseHuggingFaceEmotions(data: unknown): EmotionVector | null {
+  let results = data
+  while (Array.isArray(results) && results.length > 0 && Array.isArray(results[0])) {
+    results = results[0]
+  }
+  if (!Array.isArray(results)) return null
+
+  const vector = emptyEmotionVector()
+  let total = 0
+  for (const item of results as HuggingFaceLabel[]) {
+    const label = (item?.label ?? '').toLowerCase() as (typeof EMOTION_LABELS)[number]
+    const score = typeof item?.score === 'number' ? item.score : 0
+    if ((EMOTION_LABELS as readonly string[]).includes(label)) {
+      vector[label] = score
+      total += score
+    }
+  }
+  if (total <= 0) return null
+
+  for (const label of EMOTION_LABELS) vector[label] /= total
+  return vector
+}
+
+async function analyzeEmotionsForText(text: string, apiKey: string): Promise<EmotionVector | null> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10000)
+  try {
+    const response = await fetch(HF_EMOTION_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      // top_k: null → the full distribution, not just the top label
+      body: JSON.stringify({ inputs: text, parameters: { top_k: null }, options: { wait_for_model: true } }),
+      signal: controller.signal,
+    })
+    if (!response.ok) return null
+    const data = await response.json()
+    const parsed = HuggingFaceResponseSchema.safeParse(data)
+    return parseHuggingFaceEmotions(parsed.success ? parsed.data : data)
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+export async function batchAnalyzeEmotions(
+  articles: Array<{ text: string; index: number }>,
+  apiKey: string
+): Promise<Map<number, EmotionVector>> {
+  const results = new Map<number, EmotionVector>()
+  const CONCURRENCY = 5
+
+  for (let i = 0; i < articles.length; i += CONCURRENCY) {
+    const batch = articles.slice(i, i + CONCURRENCY)
+    const settled = await Promise.allSettled(
+      batch.map(async ({ text, index }) => {
+        const cacheKey = text.substring(0, 100)
+        const cached = emotionCache.get(cacheKey)
+        if (cached) return { index, vector: cached }
+        const vector = await analyzeEmotionsForText(smartTruncate(text, 500), apiKey)
+        if (!vector) throw new Error('no emotion vector')
+        if (emotionCache.size >= MAX_CACHE_SIZE) {
+          const firstKey = emotionCache.keys().next().value
+          if (firstKey) emotionCache.delete(firstKey)
+        }
+        emotionCache.set(cacheKey, vector)
+        return { index, vector }
+      })
+    )
+    for (const result of settled) {
+      if (result.status === 'fulfilled') {
+        results.set(result.value.index, result.value.vector)
+      }
+    }
+  }
+
+  return results
 }
 
 export async function batchAnalyzeWithHuggingFace(
