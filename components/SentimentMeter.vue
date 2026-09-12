@@ -1,6 +1,14 @@
 <template>
   <div class="sentiment-meter">
-    <div class="meter-container">
+    <div
+      class="meter-container"
+      role="meter"
+      aria-label="World mood"
+      :aria-valuemin="-1"
+      :aria-valuemax="1"
+      :aria-valuenow="roundedScore"
+      :aria-valuetext="meterValueText"
+    >
       <div class="meter-track">
         <div 
           class="meter-fill" 
@@ -16,10 +24,13 @@
         <span class="label positive">Positive</span>
       </div>
     </div>
-    <div v-if="dataMode === 'demo' || dataMode === 'stale' || isUsingFallback" class="fallback-badge">
-      <span class="fallback-icon">📡</span>
-      <span class="fallback-text">{{ dataMode === 'stale' ? 'Last known mood' : 'Demo data' }}</span>
+    <div aria-live="polite">
+      <div v-if="dataMode === 'demo' || dataMode === 'stale' || isUsingFallback" class="fallback-badge">
+        <span class="fallback-icon">📡</span>
+        <span class="fallback-text">{{ dataMode === 'stale' ? 'Last known mood' : 'Demo data' }}</span>
+      </div>
     </div>
+    <p v-if="provenanceText" class="provenance">{{ provenanceText }}</p>
     <button 
       v-if="error && !isUsingFallback" 
       @click="$emit('retry')"
@@ -31,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps<{
   score: number
@@ -40,11 +51,37 @@ const props = defineProps<{
   isUsingFallback?: boolean
   /** Data provenance (issue #67): live hides the badge, stale/demo label it */
   dataMode?: 'live' | 'stale' | 'demo'
+  /** Timestamp of the reading on screen (issue #75) */
+  updatedAt?: number | null
+  /** Providers that contributed to the reading (issue #75) */
+  providers?: string[]
 }>()
 
 defineEmits<{
   retry: []
 }>()
+
+const roundedScore = computed(() => Math.round(props.score * 100) / 100)
+
+const meterValueText = computed(() => {
+  const tone = props.score < -0.05 ? 'Negative' : props.score > 0.05 ? 'Positive' : 'Neutral'
+  return `${tone} (${roundedScore.value})`
+})
+
+// "Updated Xs ago" — ticks on a 10s interval, never per animation frame
+const now = ref(Date.now())
+let ageTicker: ReturnType<typeof setInterval> | null = null
+onMounted(() => { ageTicker = setInterval(() => { now.value = Date.now() }, 10000) })
+onUnmounted(() => { if (ageTicker) clearInterval(ageTicker) })
+
+const provenanceText = computed(() => {
+  if (!props.updatedAt) return ''
+  const seconds = Math.max(0, Math.round((now.value - props.updatedAt) / 1000))
+  const age = seconds < 60 ? `${seconds}s ago` : `${Math.round(seconds / 60)}m ago`
+  const mode = props.dataMode === 'stale' ? 'Retained' : props.dataMode === 'demo' ? 'Demo' : 'Live'
+  const from = props.providers && props.providers.length > 0 ? ` · ${props.providers.join(' + ')}` : ''
+  return `${mode}${from} · updated ${age}`
+})
 
 const sentimentScore = computed(() => {
   if (typeof props.score !== 'number') return 0
@@ -67,6 +104,13 @@ const getMeterColor = computed(() => {
 </script>
 
 <style scoped>
+.provenance {
+  margin-top: 0.4rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.35);
+}
+
 .sentiment-meter {
   position: fixed;
   bottom: 2rem;

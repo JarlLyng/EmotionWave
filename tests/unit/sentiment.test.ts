@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   isDemoPayload,
+  safeArticleUrl,
   normalizeSentiment,
   keywordBasedSentiment,
   getDynamicFallbackData,
@@ -181,5 +182,20 @@ describe('isDemoPayload', () => {
     expect(isDemoPayload({ sources: [{ name: 'Fallback', score: 0.3, articles: 0 }] })).toBe(true)
     expect(isDemoPayload({ sources: [{ name: 'GDELT', score: 0.1, articles: 5 }] })).toBe(false)
     expect(isDemoPayload({ sources: [] })).toBe(false)
+  })
+})
+
+describe('safeArticleUrl (issue #75)', () => {
+  it('accepts plain web links', () => {
+    expect(safeArticleUrl('https://example.com/story')).toBe('https://example.com/story')
+    expect(safeArticleUrl('http://example.com/a?b=1')).toBe('http://example.com/a?b=1')
+  })
+
+  it('rejects missing, unparsable and non-web schemes', () => {
+    expect(safeArticleUrl('')).toBeNull()
+    expect(safeArticleUrl(undefined)).toBeNull()
+    expect(safeArticleUrl('not a url')).toBeNull()
+    expect(safeArticleUrl(['javascript', 'alert(1)'].join(':'))).toBeNull()
+    expect(safeArticleUrl('data:text/html,hi')).toBeNull()
   })
 })
