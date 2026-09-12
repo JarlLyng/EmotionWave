@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { fetchGDELTSentiment } from './useGDELT'
-import type { BaseSentimentData, EmotionState } from '~/utils/sentiment'
+import { getDynamicFallbackData, isDemoPayload } from '~/utils/sentiment'
+import type { BaseSentimentData, DataMode, EmotionState } from '~/utils/sentiment'
 
 interface SourceEntry {
   name: string
@@ -30,6 +31,10 @@ export function useSentiment() {
   // World-emotion state from the server (issue #30); null when unavailable.
   // Components lerp their own visuals, so no client-side animation needed here.
   const emotion = ref<EmotionState | null>(null)
+  // Honest data provenance (issue #67): live, stale (retained snapshot during
+  // an outage) or demo (synthetic — nothing real was ever received)
+  const dataMode = ref<DataMode>('live')
+  let lastGoodPayload: SentimentPayload | null = null
 
   let intervalId: ReturnType<typeof setInterval> | null = null
   let animationFrameId: number | null = null
@@ -72,6 +77,48 @@ export function useSentiment() {
     }
   }
 
+  /**
+   * Route every payload — server, client GDELT or synthetic — through one
+   * honest decision (issue #67): real data is applied and snapshotted; a
+   * synthetic payload either freezes the last good snapshot (stale) or, when
+   * none exists, applies demo data clearly labeled as such.
+   */
+  function ingest(data: SentimentPayload) {
+    if (!isDemoPayload(data)) {
+      lastGoodPayload = data
+      dataMode.value = 'live'
+      isUsingFallback.value = false
+      error.value = null
+      applyData(data)
+      return
+    }
+
+    isUsingFallback.value = true
+
+    if (lastGoodPayload) {
+      // Outage with history: keep showing the last real mood, marked stale.
+      // Deliberately no applyData — the demo payload must not overwrite
+      // real headlines or repaint the artwork with synthetic feelings.
+      dataMode.value = 'stale'
+      error.value = 'Live feed unavailable — showing last known mood'
+      return
+    }
+
+    // Outage with no history: honest demo mode
+    dataMode.value = 'demo'
+    error.value = 'Using demo data (API unavailable)'
+    const withHeadline: SentimentPayload = {
+      ...data,
+      articles: data.articles && data.articles.length > 0 ? data.articles : [{
+        title: 'Live news feed unavailable — running in demo mode',
+        url: '',
+        source: 'EmotionWave',
+        sentiment: 0,
+      }],
+    }
+    applyData(withHeadline)
+  }
+
   let inFlight = false
 
   async function fetchSentiment() {
@@ -91,44 +138,20 @@ export function useSentiment() {
         const response = await fetch(apiUrl)
         if (!response.ok) throw new Error(`API returned ${response.status}`)
         data = await response.json() as SentimentPayload
-        isUsingFallback.value = false
       } catch {
         // Server failed — fall back to client-side GDELT. Fetched lazily so a
         // healthy server API doesn't cost every visitor an extra GDELT request
-        // per poll whose result would just be discarded.
+        // per poll whose result would just be discarded. Note: this resolves
+        // with a demo-marked payload on failure; ingest() sorts live from demo.
         try {
           data = await fetchGDELTSentiment()
-          isUsingFallback.value = false
         } catch {
-          // Both failed — use time-based fallback
-          isUsingFallback.value = true
-          error.value = 'Using demo data (API unavailable)'
-
-          const now = Date.now()
-          const hour = new Date(now).getHours()
-          const minute = new Date(now).getMinutes()
-          const timeBasedSeed = (hour * 60 + minute) % 1440
-          const baseScore = 0.3 + (Math.sin(timeBasedSeed * 0.1) * 0.4)
-          const seconds = new Date(now).getSeconds()
-          const variation = (seconds % 30) / 100
-
-          data = {
-            score: Math.max(-1, Math.min(1, baseScore + variation)),
-            timestamp: now,
-            sources: [],
-            // Keep previously fetched headlines if we have them; otherwise show
-            // an honest status line instead of leaving the rotator blank
-            articles: articles.value.length > 0 ? undefined : [{
-              title: 'Live news feed unavailable — running in demo mode',
-              url: '',
-              source: 'EmotionWave',
-              sentiment: 0,
-            }],
-          }
+          // Both paths threw — synthesize an explicitly demo-marked payload
+          data = getDynamicFallbackData()
         }
       }
 
-      applyData(data)
+      ingest(data)
     } finally {
       isLoading.value = false
       inFlight = false
@@ -174,6 +197,7 @@ export function useSentiment() {
   return {
     sentimentScore,
     emotion,
+    dataMode,
     isLoading,
     error,
     isUsingFallback,

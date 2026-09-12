@@ -16,9 +16,9 @@
         <span class="label positive">Positive</span>
       </div>
     </div>
-    <div v-if="isUsingFallback" class="fallback-badge">
+    <div v-if="dataMode === 'demo' || dataMode === 'stale' || isUsingFallback" class="fallback-badge">
       <span class="fallback-icon">📡</span>
-      <span class="fallback-text">Demo data</span>
+      <span class="fallback-text">{{ dataMode === 'stale' ? 'Last known mood' : 'Demo data' }}</span>
     </div>
     <button 
       v-if="error && !isUsingFallback" 
@@ -38,6 +38,8 @@ const props = defineProps<{
   isLoading: boolean
   error?: string | null
   isUsingFallback?: boolean
+  /** Data provenance (issue #67): live hides the badge, stale/demo label it */
+  dataMode?: 'live' | 'stale' | 'demo'
 }>()
 
 defineEmits<{

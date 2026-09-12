@@ -70,7 +70,7 @@ export function parseHuggingFaceSentiment(data: unknown): number {
   return Math.max(-10, Math.min(10, rawScore * neutralDampen))
 }
 
-async function analyzeSentimentWithHuggingFace(text: string, apiKey: string): Promise<number> {
+async function analyzeSentimentWithHuggingFace(text: string, apiKey: string, signal?: AbortSignal): Promise<number> {
   const truncatedText = text.substring(0, 500)
   const body = JSON.stringify({ inputs: truncatedText, options: { wait_for_model: true } })
   const headers = {
@@ -84,6 +84,8 @@ async function analyzeSentimentWithHuggingFace(text: string, apiKey: string): Pr
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
+      const abortListener = () => controller.abort()
+      signal?.addEventListener('abort', abortListener, { once: true })
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -92,6 +94,7 @@ async function analyzeSentimentWithHuggingFace(text: string, apiKey: string): Pr
         signal: controller.signal,
       })
       clearTimeout(timeoutId)
+      signal?.removeEventListener('abort', abortListener)
 
       if (response.status === 401 || response.status === 403) {
         throw new Error(`HuggingFace authentication failed (${response.status})`)
@@ -147,9 +150,11 @@ export function parseHuggingFaceEmotions(data: unknown): EmotionVector | null {
   return vector
 }
 
-async function analyzeEmotionsForText(text: string, apiKey: string): Promise<EmotionVector | null> {
+async function analyzeEmotionsForText(text: string, apiKey: string, signal?: AbortSignal): Promise<EmotionVector | null> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 10000)
+  const abortListener = () => controller.abort()
+  signal?.addEventListener('abort', abortListener, { once: true })
   try {
     const response = await fetch(HF_EMOTION_URL, {
       method: 'POST',
@@ -166,24 +171,28 @@ async function analyzeEmotionsForText(text: string, apiKey: string): Promise<Emo
     return null
   } finally {
     clearTimeout(timeoutId)
+    signal?.removeEventListener('abort', abortListener)
   }
 }
 
 export async function batchAnalyzeEmotions(
   articles: Array<{ text: string; index: number }>,
-  apiKey: string
+  apiKey: string,
+  signal?: AbortSignal
 ): Promise<Map<number, EmotionVector>> {
   const results = new Map<number, EmotionVector>()
   const CONCURRENCY = 5
 
   for (let i = 0; i < articles.length; i += CONCURRENCY) {
+    // Budget spent — do not launch further waves
+    if (signal?.aborted) break
     const batch = articles.slice(i, i + CONCURRENCY)
     const settled = await Promise.allSettled(
       batch.map(async ({ text, index }) => {
         const cacheKey = text.substring(0, 100)
         const cached = emotionCache.get(cacheKey)
         if (cached) return { index, vector: cached }
-        const vector = await analyzeEmotionsForText(smartTruncate(text, 500), apiKey)
+        const vector = await analyzeEmotionsForText(smartTruncate(text, 500), apiKey, signal)
         if (!vector) throw new Error('no emotion vector')
         if (emotionCache.size >= MAX_CACHE_SIZE) {
           const firstKey = emotionCache.keys().next().value
@@ -205,12 +214,15 @@ export async function batchAnalyzeEmotions(
 
 export async function batchAnalyzeWithHuggingFace(
   articles: Array<{ text: string; index: number }>,
-  apiKey: string
+  apiKey: string,
+  signal?: AbortSignal
 ): Promise<Map<number, number>> {
   const results = new Map<number, number>()
   const CONCURRENCY = 5
 
   for (let i = 0; i < articles.length; i += CONCURRENCY) {
+    // Budget spent — do not launch further waves
+    if (signal?.aborted) break
     const batch = articles.slice(i, i + CONCURRENCY)
     const settled = await Promise.allSettled(
       batch.map(async ({ text, index }) => {
@@ -218,7 +230,7 @@ export async function batchAnalyzeWithHuggingFace(
         if (articleCache.has(cacheKey)) {
           return { index, score: articleCache.get(cacheKey)! }
         }
-        const score = await analyzeSentimentWithHuggingFace(smartTruncate(text, 500), apiKey)
+        const score = await analyzeSentimentWithHuggingFace(smartTruncate(text, 500), apiKey, signal)
         if (articleCache.size >= MAX_CACHE_SIZE) {
           const firstKey = articleCache.keys().next().value
           if (firstKey) articleCache.delete(firstKey)

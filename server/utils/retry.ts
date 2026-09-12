@@ -1,12 +1,16 @@
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
-  baseDelay: number = 1000
+  baseDelay: number = 1000,
+  signal?: AbortSignal
 ): Promise<T> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (signal?.aborted) throw new Error('Aborted: time budget exhausted')
     try {
       return await fn()
     } catch (error) {
+      // Cancelled work must not be retried — the budget is spent
+      if (signal?.aborted) throw error
       // Permanent client errors (4xx except 429) won't be fixed by retrying —
       // fail fast instead of burning the serverless time budget on backoff
       const msg = error instanceof Error ? error.message : ''
