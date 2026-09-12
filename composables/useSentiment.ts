@@ -39,6 +39,9 @@ export function useSentiment() {
   // Honest data provenance (issue #67): live, stale (retained snapshot during
   // an outage) or demo (synthetic — nothing real was ever received)
   const dataMode = ref<DataMode>('live')
+  // Timestamp of the measurement currently on screen. Not advanced by demo
+  // payloads, and kept during stale mode so the UI can show the reading's age.
+  const lastUpdated = ref<number | null>(null)
   let lastGoodPayload: SentimentPayload | null = null
 
   let intervalId: ReturnType<typeof setInterval> | null = null
@@ -113,6 +116,7 @@ export function useSentiment() {
       dataMode.value = 'live'
       isUsingFallback.value = false
       error.value = null
+      lastUpdated.value = data.timestamp ?? Date.now()
       applyData(data)
       return
     }
@@ -240,6 +244,7 @@ export function useSentiment() {
     sentimentScore,
     emotion,
     dataMode,
+    lastUpdated,
     isLoading,
     error,
     isUsingFallback,

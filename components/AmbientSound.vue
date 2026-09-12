@@ -39,11 +39,13 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 
-import type { EmotionState } from '~/utils/sentiment'
+import { createEmotionStabilizer, type EmotionState } from '~/utils/sentiment'
 
 const props = defineProps<{
   sentimentScore: number
   emotion?: EmotionState | null
+  /** Timestamp of the underlying measurement — hysteresis advances only when this changes (issue #73) */
+  updatedAt?: number | null
 }>()
 
 const isPlaying = ref(false)
@@ -85,13 +87,29 @@ let chordIndex = 0
 let droneCrossfadeTimeout: ReturnType<typeof setTimeout> | null = null
 let noiseCrossfadeTimeout: ReturnType<typeof setTimeout> | null = null
 
+// Startup cancellation (issue #72): every async boundary in the startup path
+// checks its session id, so audio begun before navigating away can neither
+// create nodes nor start timers after unmount
+let startupSession = 0
+let componentDestroyed = false
+let cancelStartupDelays: Array<() => void> = []
+
+/** Cancellable delay: cleanup resolves it early so stale awaits can bail */
+function startupSleep(ms: number): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const id = setTimeout(resolve, ms)
+    cancelStartupDelays.push(() => { clearTimeout(id); resolve() })
+  })
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const PENTATONIC_MINOR = ['C3', 'Eb3', 'F3', 'G3', 'Bb3', 'C4', 'Eb4']
 const PENTATONIC_MAJOR = ['C3', 'D3', 'E3', 'G3', 'A3', 'C4', 'D4', 'E4']
 
-// Dominant emotion → musical bucket (issue #30). Hysteresis below prevents
-// jarring scale flips when the dominant label flickers between polls.
+// Dominant emotion → musical bucket (issue #30). The stabilizer advances only
+// on fresh measurements (watcher on updatedAt below), so repeated chord
+// playback within one polling interval can never flip the scale (issue #73).
 const EMOTION_TO_BUCKET: Record<string, keyof typeof CHORD_VARIATIONS> = {
   joy: 'positive',
   surprise: 'neutralPos',
@@ -101,28 +119,18 @@ const EMOTION_TO_BUCKET: Record<string, keyof typeof CHORD_VARIATIONS> = {
   anger: 'negative',
 }
 
-let stableDominant: string | null = null
-let pendingDominant: string | null = null
+const emotionStabilizer = createEmotionStabilizer()
 
-/** Returns the musically active bucket, or null to fall back to score buckets */
+watch(() => props.updatedAt, (stamp, previous) => {
+  // Same timestamp = the 30s-cached payload came around again — not fresh
+  if (stamp == null || stamp === previous) return
+  emotionStabilizer.observe(props.emotion ?? null)
+}, { immediate: true })
+
+/** Pure lookup: the musically active bucket, or null for score fallback */
 function emotionBucket(): keyof typeof CHORD_VARIATIONS | null {
-  const dominant = props.emotion?.dominant ?? null
-  if (!dominant) { stableDominant = null; pendingDominant = null; return null }
-
-  if (dominant === stableDominant) {
-    pendingDominant = null
-  } else if (dominant === pendingDominant) {
-    // Seen twice in a row — commit the switch
-    stableDominant = dominant
-    pendingDominant = null
-  } else if (stableDominant === null) {
-    // First reading: adopt immediately
-    stableDominant = dominant
-  } else {
-    pendingDominant = dominant
-  }
-
-  return stableDominant ? EMOTION_TO_BUCKET[stableDominant] ?? null : null
+  const dominant = emotionStabilizer.current()
+  return dominant ? EMOTION_TO_BUCKET[dominant] ?? null : null
 }
 
 const CHORD_VARIATIONS = {
@@ -171,13 +179,21 @@ const loadToneJS = async () => {
 
 // ─── Init audio ──────────────────────────────────────────────────────────────
 
-const initAudio = async () => {
+/** Returns false when the startup session went stale mid-flight (issue #72) */
+const initAudio = async (isStale: () => boolean): Promise<boolean> => {
   const Tone = await loadToneJS()
+  if (isStale()) return false
   await Tone.start()
+  if (isStale()) return false
 
   // ── Master effects chain ──
   masterReverb = new Tone.Reverb({ decay: 12, wet: 0.6, preDelay: 0.3 })
   await masterReverb.generate()
+  if (isStale()) {
+    // Dispose the partial initialization created so far
+    cleanup()
+    return false
+  }
 
   pingPongDelay = new Tone.PingPongDelay({
     delayTime: '4n',
@@ -240,11 +256,12 @@ const initAudio = async () => {
     modulationEnvelope: { attack: 1.5, decay: 1, sustain: 0.5, release: 4 },
   })
   melodicSynth.chain(melodicFilter, melodicGain, masterGain)
+  return true
 }
 
 // ─── Start all layers (staggered to avoid pop) ──────────────────────────────
 
-const startAllLayers = async () => {
+const startAllLayers = async (isStale: () => boolean) => {
   if (!droneSynth || !noiseSource || !droneLFO) return
 
   const score = props.sentimentScore ?? 0
@@ -257,14 +274,14 @@ const startAllLayers = async () => {
   droneSynth.triggerAttack(currentDroneNote)
   droneLFO.start()
 
-  // Layer 2: Start noise (staggered 1s)
-  await new Promise(r => setTimeout(r, 1000))
-  if (!isPlaying.value) return
+  // Layer 2: Start noise (staggered 1s; delay is cancellable, issue #72)
+  await startupSleep(1000)
+  if (isStale() || !isPlaying.value || !noiseSource) return
   noiseSource.start()
 
   // Layer 3: Start melodic events (staggered another 1s)
-  await new Promise(r => setTimeout(r, 1000))
-  if (!isPlaying.value) return
+  await startupSleep(1000)
+  if (isStale() || !isPlaying.value) return
   scheduleMelodicEvent()
 }
 
@@ -450,15 +467,22 @@ const toggleSound = async () => {
   if (isLoading.value) return
 
   if (isPlaying.value) {
+    startupSession++
     isPlaying.value = false
     cleanup()
   } else {
+    const session = ++startupSession
+    const isStale = () => componentDestroyed || session !== startupSession
     try {
       isLoading.value = true
-      await initAudio()
+      const ready = await initAudio(isStale)
+      if (!ready || isStale()) {
+        cleanup()
+        return
+      }
       needsInteraction.value = false
       isPlaying.value = true
-      await startAllLayers()
+      await startAllLayers(isStale)
     } catch (error) {
       console.error('Audio init failed:', error)
       needsInteraction.value = true
@@ -472,6 +496,10 @@ const toggleSound = async () => {
 // ─── Cleanup ─────────────────────────────────────────────────────────────────
 
 const cleanup = () => {
+  // Resolve pending startup delays early; their session guards then bail
+  for (const cancel of cancelStartupDelays) cancel()
+  cancelStartupDelays = []
+
   if (chordInterval) {
     clearTimeout(chordInterval)
     chordInterval = null
@@ -541,6 +569,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  // Invalidate any in-flight startup before disposing (issue #72)
+  componentDestroyed = true
+  startupSession++
+  isPlaying.value = false
   cleanup()
   if (typeof document !== 'undefined') {
     document.removeEventListener('visibilitychange', handleVisibilityChange)
