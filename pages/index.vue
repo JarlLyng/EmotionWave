@@ -9,6 +9,8 @@
       :error="error"
       :is-using-fallback="isUsingFallback"
       :data-mode="dataMode"
+      :updated-at="lastUpdated"
+      :providers="providers"
       @retry="fetchSentiment"
     />
     <InfoDialog />
@@ -24,7 +26,7 @@ import InfoDialog from '~/components/InfoDialog.vue'
 import HeadlineRotator from '~/components/HeadlineRotator.vue'
 import { useSentiment } from '~/composables/useSentiment'
 
-const { sentimentScore, emotion, dataMode, lastUpdated, isLoading, error, isUsingFallback, articles, fetchSentiment, startPolling, stopPolling } = useSentiment()
+const { sentimentScore, emotion, dataMode, lastUpdated, providers, isLoading, error, isUsingFallback, articles, fetchSentiment, startPolling, stopPolling } = useSentiment()
 
 // Structured data for SEO (JSON-LD) - using useHead instead of inline script
 const config = useRuntimeConfig()

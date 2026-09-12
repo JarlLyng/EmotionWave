@@ -12,7 +12,8 @@
       </svg>
     </button>
 
-    <!-- Dialog -->
+    <!-- Dialog (teleported out of <main> so the background can be made inert) -->
+    <Teleport to="body">
     <Transition
       enter-active-class="transition duration-500 ease-out"
       enter-from-class="transform scale-95 opacity-0"
@@ -23,9 +24,11 @@
     >
       <div 
         v-if="isOpen"
+        ref="dialogOverlay"
         class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-8 z-50"
         @click="isOpen = false"
         @keydown.esc="isOpen = false"
+        @keydown.tab="trapFocus"
         role="dialog"
         aria-modal="true"
         aria-labelledby="dialog-title"
@@ -45,6 +48,7 @@
               </p>
             </div>
             <button 
+              ref="closeButton"
               @click="isOpen = false"
               type="button"
               class="text-white/40 transition-colors p-2 rounded-full"
@@ -168,13 +172,52 @@
         </div>
       </div>
     </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, nextTick, onUnmounted } from 'vue'
 
 const isOpen = ref(false)
+const dialogOverlay = ref<HTMLElement | null>(null)
+const closeButton = ref<HTMLElement | null>(null)
+
+// Focus management (issue #74): remember the opener, move focus into the
+// dialog, keep Tab inside it, make the page behind it inert, and restore
+// focus on close.
+let openerElement: HTMLElement | null = null
+
+const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+
+function focusablesInDialog(): HTMLElement[] {
+  if (!dialogOverlay.value) return []
+  return [...dialogOverlay.value.querySelectorAll<HTMLElement>(FOCUSABLE)]
+    .filter(el => !el.hasAttribute('disabled'))
+}
+
+function trapFocus(e: KeyboardEvent) {
+  const focusables = focusablesInDialog()
+  if (focusables.length === 0) return
+  const first = focusables[0]!
+  const last = focusables[focusables.length - 1]!
+  const active = document.activeElement
+
+  if (e.shiftKey && (active === first || !dialogOverlay.value?.contains(active))) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && (active === last || !dialogOverlay.value?.contains(active))) {
+    e.preventDefault()
+    first.focus()
+  }
+}
+
+function setBackgroundInert(inert: boolean) {
+  const appRoot = document.querySelector('#__nuxt')
+  if (!appRoot) return
+  if (inert) appRoot.setAttribute('inert', '')
+  else appRoot.removeAttribute('inert')
+}
 
 // Close on escape key
 const handleEscape = (e: KeyboardEvent) => {
@@ -183,16 +226,24 @@ const handleEscape = (e: KeyboardEvent) => {
   }
 }
 
-watch(isOpen, (newValue) => {
+watch(isOpen, async (newValue) => {
   if (newValue) {
     window.addEventListener('keydown', handleEscape)
+    openerElement = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setBackgroundInert(true)
+    await nextTick()
+    closeButton.value?.focus()
   } else {
     window.removeEventListener('keydown', handleEscape)
+    setBackgroundInert(false)
+    openerElement?.focus()
+    openerElement = null
   }
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleEscape)
+  setBackgroundInert(false)
 })
 </script>
 

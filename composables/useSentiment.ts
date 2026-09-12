@@ -20,7 +20,7 @@ interface ArticleEntry {
   sentiment?: number
 }
 
-type SentimentPayload = BaseSentimentData & { articles?: ArticleEntry[]; emotion?: EmotionState }
+type SentimentPayload = BaseSentimentData & { articles?: ArticleEntry[]; emotion?: EmotionState; apiSources?: string[] }
 
 /**
  * Composable for managing sentiment data
@@ -42,6 +42,8 @@ export function useSentiment() {
   // Timestamp of the measurement currently on screen. Not advanced by demo
   // payloads, and kept during stale mode so the UI can show the reading's age.
   const lastUpdated = ref<number | null>(null)
+  // Providers that contributed to the current reading (issue #75)
+  const providers = ref<string[]>([])
   let lastGoodPayload: SentimentPayload | null = null
 
   let intervalId: ReturnType<typeof setInterval> | null = null
@@ -117,6 +119,8 @@ export function useSentiment() {
       isUsingFallback.value = false
       error.value = null
       lastUpdated.value = data.timestamp ?? Date.now()
+      // Server payloads carry apiSources; the client GDELT path implies GDELT
+      providers.value = data.apiSources ?? ['GDELT']
       applyData(data)
       return
     }
@@ -133,6 +137,7 @@ export function useSentiment() {
     }
 
     // Outage with no history: honest demo mode
+    providers.value = []
     dataMode.value = 'demo'
     error.value = 'Using demo data (API unavailable)'
     const withHeadline: SentimentPayload = {
@@ -245,6 +250,7 @@ export function useSentiment() {
     emotion,
     dataMode,
     lastUpdated,
+    providers,
     isLoading,
     error,
     isUsingFallback,

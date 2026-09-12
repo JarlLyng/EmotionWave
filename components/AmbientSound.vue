@@ -25,6 +25,8 @@
         min="0"
         max="1"
         step="0.01"
+        aria-label="Music volume"
+        :aria-valuetext="`${Math.round(volume * 100)}%`"
         class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
         :style="{
           background: `linear-gradient(to right, ${color} 0%, ${color} ${volume * 100}%, #e5e7eb ${volume * 100}%, #e5e7eb 100%)`

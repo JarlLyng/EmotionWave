@@ -141,6 +141,23 @@ export function emotionToColor(state: EmotionState): [number, number, number] {
   ]
 }
 
+// ─── Article link safety (issue #75) ─────────────────────────────────────────
+
+/**
+ * Return the href for an article link, or null when the URL is missing,
+ * unparsable, or uses any scheme other than http(s). Feed data is untrusted;
+ * only plain web links may become anchors.
+ */
+export function safeArticleUrl(url: string | undefined | null): string | null {
+  if (!url) return null
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null
+  } catch {
+    return null
+  }
+}
+
 // ─── Emotion stability (issue #73) ───────────────────────────────────────────
 
 const LOW_INTENSITY_THRESHOLD = 0.15
