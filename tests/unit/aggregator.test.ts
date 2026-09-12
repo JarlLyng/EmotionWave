@@ -114,3 +114,45 @@ describe('aggregateSentiment time budget (issue #68)', () => {
     expect(result.dataMode).toBe('live')
   })
 })
+
+describe('aggregateSentiment sampling (issue #70)', () => {
+  it('spreads the HF sample across providers and includes all subreddits', async () => {
+    const many = (n: number, source: string, prefix: string): Article[] =>
+      Array.from({ length: n }, (_, i) => ({
+        title: `${prefix} headline number ${i}`, sentiment: 1,
+        url: `https://example.com/${prefix}/${i}`, source,
+      }))
+    const subs = ['worldnews', 'news', 'technology', 'science', 'environment']
+
+    gdelt.mockResolvedValue(many(30, 'GDELT', 'gdelt'))
+    news.mockResolvedValue([])
+    reddit.mockResolvedValue(subs.flatMap(sub => many(10, `Reddit: r/${sub}`, sub)))
+    hfSentiment.mockResolvedValue(new Map())
+    hfEmotions.mockResolvedValue(new Map())
+
+    const result = await aggregateSentiment(null, 'hf-key')
+
+    // The HF sample is no longer 10× the first provider
+    const sample = hfSentiment.mock.calls[0]![0]
+    expect(sample).toHaveLength(10)
+    const gdeltShare = sample.filter(t => t.text.includes('GDELT')).length
+    expect(gdeltShare).toBeLessThan(10)
+    expect(gdeltShare).toBeGreaterThan(0)
+
+    // Every configured subreddit contributes to the aggregation
+    const sourceNames = new Set(result.articles?.map(a => a.source))
+    for (const sub of subs) {
+      expect(sourceNames.has(`Reddit: r/${sub}`)).toBe(true)
+    }
+  })
+
+  it('deduplicates the same story arriving from two feeds', async () => {
+    gdelt.mockResolvedValue([{ title: 'Shared story', sentiment: 2, url: 'https://www.paper.com/story/', source: 'GDELT' }])
+    news.mockResolvedValue([{ title: 'Shared story', sentiment: 2, url: 'https://paper.com/story', source: 'Paper' }])
+    reddit.mockResolvedValue([])
+
+    const result = await aggregateSentiment(null, null)
+    expect(result.articles).toHaveLength(1)
+    expect(result.articles?.[0]?.source).toBe('GDELT')
+  })
+})

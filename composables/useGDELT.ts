@@ -4,6 +4,7 @@
  */
 
 import {
+  type Article,
   type BaseSentimentData,
   getDateRange,
   getDynamicFallbackData,
@@ -11,78 +12,95 @@ import {
   extractArticlesFromGDELT,
   calculateWeightedSentiment,
   GDELT_QUERY,
-} from '~/utils/sentiment'
+} from '../utils/sentiment'
+
+export type GDELTClientPayload = BaseSentimentData & { articles?: Article[] }
+
+const CLIENT_TIMEOUT_MS = 10000
+const MAX_ARTICLES = 50
 
 /**
- * Fetch sentiment data directly from GDELT API (client-side)
+ * Run one GDELT query. Parses the body structurally (issue #69): JSON first,
+ * then the shared error-field inspection. GDELT reports query problems as
+ * plain text with HTTP 200, so a JSON parse failure IS the API error signal —
+ * article content is never scanned for error-looking words.
  */
-export async function fetchGDELTSentiment(): Promise<BaseSentimentData> {
+async function queryGDELT(params: URLSearchParams, externalSignal?: AbortSignal): Promise<Article[] | null> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS)
+  const abortListener = () => controller.abort()
+  externalSignal?.addEventListener('abort', abortListener, { once: true })
+
   try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000)
+    const response = await fetch(
+      `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`,
+      { signal: controller.signal, headers: { 'Accept': 'application/json' } }
+    )
+    const text = await response.text()
+    if (!response.ok) {
+      throw new Error(`GDELT HTTP ${response.status}: ${text.substring(0, 100)}`)
+    }
 
-    const dateRange = getDateRange()
+    let data: unknown
+    try {
+      data = JSON.parse(text)
+    } catch {
+      throw new Error(`GDELT API message: ${text.substring(0, 200)}`)
+    }
 
+    // Structural inspection only — {error}/{message} payloads return null
+    const rawArticles = extractArticlesFromGDELT(data)
+    if (!rawArticles) return null
+    return rawArticles.map(normalizeGDELTArticle)
+  } finally {
+    clearTimeout(timeoutId)
+    externalSignal?.removeEventListener('abort', abortListener)
+  }
+}
+
+/** Build a live payload that keeps the headlines (issue #69) */
+function buildPayload(articles: Article[]): GDELTClientPayload {
+  const { score, sources } = calculateWeightedSentiment(articles)
+  const withTitles = articles.filter(a => a.title && a.title.trim().length > 0)
+  return {
+    score,
+    sources,
+    timestamp: Date.now(),
+    dataMode: 'live',
+    articles: withTitles.slice(0, MAX_ARTICLES),
+  }
+}
+
+/**
+ * Fetch sentiment data directly from GDELT API (client-side).
+ * Resolves with a demo-marked fallback payload on failure — never rejects.
+ */
+export async function fetchGDELTSentiment(signal?: AbortSignal): Promise<GDELTClientPayload> {
+  try {
     const params = new URLSearchParams({
       query: GDELT_QUERY,
       mode: 'artlist',
       format: 'json',
       maxrecords: '50',
       sort: 'hybridrel',
-      startdatetime: dateRange.start,
-      enddatetime: dateRange.end,
+      startdatetime: getDateRange().start,
+      enddatetime: getDateRange().end,
     })
 
-    const apiUrl = `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`
-
-    const response = await fetch(apiUrl, {
-      signal: controller.signal,
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
-    })
-
-    clearTimeout(timeoutId)
-
-    const responseText = await response.text()
-
-    if (!response.ok) {
-      throw new Error(`GDELT API HTTP ${response.status}: ${responseText.substring(0, 100)}`)
-    }
-
-    // Check for error messages before parsing
-    const lowerText = responseText.toLowerCase()
-    if (lowerText.includes('error') || lowerText.includes('invalid') ||
-        lowerText.includes('one or more') || lowerText.includes('too short') ||
-        lowerText.includes('too long') || lowerText.includes('too common')) {
-      throw new Error(`GDELT API error: ${responseText.substring(0, 200)}`)
-    }
-
-    let data: unknown
-    try {
-      data = JSON.parse(responseText)
-    } catch {
-      throw new Error('Invalid JSON response from GDELT API')
-    }
-
-    const rawArticles = extractArticlesFromGDELT(data)
-
-    if (!rawArticles || rawArticles.length === 0) {
-      return getDynamicFallbackData()
-    }
-
-    const articles = rawArticles.map(normalizeGDELTArticle)
-    const { score, sources } = calculateWeightedSentiment(articles)
-
-    return { score, sources, timestamp: Date.now() }
+    const articles = await queryGDELT(params, signal)
+    if (articles && articles.length > 0) return buildPayload(articles)
+    return getDynamicFallbackData()
   } catch (error) {
     // Retry with a simpler query only when the failure looks transient.
-    // Timeouts (AbortError) and permanent client errors (4xx) won't be
-    // helped by an immediate retry against the same API.
+    // Aborts (external cancellation or timeout) and permanent client errors
+    // (4xx) won't be helped by an immediate retry against the same API.
+    const isAbort = signal?.aborted || (error instanceof Error && error.name === 'AbortError')
     const httpStatus = error instanceof Error
       ? Number(error.message.match(/HTTP (\d{3})/)?.[1] ?? 0)
       : 0
     const isPermanent = httpStatus >= 400 && httpStatus < 500
-    if (error instanceof Error && error.name !== 'AbortError' && !isPermanent) {
+
+    if (!isAbort && !isPermanent) {
       try {
         const simpleParams = new URLSearchParams({
           query: 'politics OR technology OR world',
@@ -91,28 +109,8 @@ export async function fetchGDELTSentiment(): Promise<BaseSentimentData> {
           maxrecords: '30',
           sort: 'hybridrel',
         })
-
-        const simpleResponse = await fetch(
-          `https://api.gdeltproject.org/api/v2/doc/doc?${simpleParams.toString()}`,
-          { headers: { 'Accept': 'application/json' } }
-        )
-
-        if (simpleResponse.ok) {
-          const simpleText = await simpleResponse.text()
-          const simpleLower = simpleText.toLowerCase()
-          if (simpleLower.includes('error') || simpleLower.includes('invalid')) {
-            throw new Error('GDELT retry returned error')
-          }
-
-          const simpleData = JSON.parse(simpleText) as unknown
-          const rawArticles = extractArticlesFromGDELT(simpleData)
-
-          if (rawArticles && rawArticles.length > 0) {
-            const articles = rawArticles.map(normalizeGDELTArticle)
-            const { score, sources } = calculateWeightedSentiment(articles)
-            return { score, sources, timestamp: Date.now() }
-          }
-        }
+        const articles = await queryGDELT(simpleParams, signal)
+        if (articles && articles.length > 0) return buildPayload(articles)
       } catch {
         // Fall through to fallback
       }

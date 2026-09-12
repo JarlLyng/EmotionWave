@@ -1,7 +1,12 @@
 import { ref } from 'vue'
 import { fetchGDELTSentiment } from './useGDELT'
-import { getDynamicFallbackData, isDemoPayload } from '~/utils/sentiment'
-import type { BaseSentimentData, DataMode, EmotionState } from '~/utils/sentiment'
+import { getDynamicFallbackData, isDemoPayload } from '../utils/sentiment'
+import type { BaseSentimentData, DataMode, EmotionState } from '../utils/sentiment'
+
+// Bounds for client fetch attempts (issue #71). The server responds within
+// its own 8s deadline, so a longer wait means the request itself is stuck.
+const SERVER_ATTEMPT_TIMEOUT_MS = 12000
+const GDELT_ATTEMPT_TIMEOUT_MS = 25000
 
 interface SourceEntry {
   name: string
@@ -38,6 +43,25 @@ export function useSentiment() {
 
   let intervalId: ReturnType<typeof setInterval> | null = null
   let animationFrameId: number | null = null
+
+  // Cancellation state (issue #71): stopPolling aborts the in-flight request,
+  // and the generation counter invalidates responses that settle afterwards
+  let activeController: AbortController | null = null
+  let fetchGeneration = 0
+  let disposed = false
+
+  /** Run one bounded attempt whose signal stopPolling can abort */
+  async function boundedAttempt<T>(timeoutMs: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    const controller = new AbortController()
+    activeController = controller
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      return await run(controller.signal)
+    } finally {
+      clearTimeout(timeoutId)
+      if (activeController === controller) activeController = null
+    }
+  }
 
   const animateTransition = () => {
     const diff = targetScore.value - sentimentScore.value
@@ -126,6 +150,7 @@ export function useSentiment() {
     inFlight = true
     isLoading.value = true
     error.value = null
+    const generation = ++fetchGeneration
 
     try {
       const config = useRuntimeConfig()
@@ -135,21 +160,30 @@ export function useSentiment() {
 
       let data: SentimentPayload
       try {
-        const response = await fetch(apiUrl)
-        if (!response.ok) throw new Error(`API returned ${response.status}`)
-        data = await response.json() as SentimentPayload
+        data = await boundedAttempt(SERVER_ATTEMPT_TIMEOUT_MS, async (signal) => {
+          const response = await fetch(apiUrl, { signal })
+          if (!response.ok) throw new Error(`API returned ${response.status}`)
+          return await response.json() as SentimentPayload
+        })
       } catch {
+        // A deliberate stop must not cascade into new fallback requests
+        if (disposed) return
+
         // Server failed — fall back to client-side GDELT. Fetched lazily so a
         // healthy server API doesn't cost every visitor an extra GDELT request
         // per poll whose result would just be discarded. Note: this resolves
         // with a demo-marked payload on failure; ingest() sorts live from demo.
         try {
-          data = await fetchGDELTSentiment()
+          data = await boundedAttempt(GDELT_ATTEMPT_TIMEOUT_MS, (signal) => fetchGDELTSentiment(signal))
         } catch {
           // Both paths threw — synthesize an explicitly demo-marked payload
           data = getDynamicFallbackData()
         }
       }
+
+      // A response that settles after stop/unmount — or after a newer fetch
+      // superseded this one — must not restart animation on disposed state
+      if (disposed || generation !== fetchGeneration) return
 
       ingest(data)
     } finally {
@@ -161,6 +195,7 @@ export function useSentiment() {
   let visibilityHandler: (() => void) | null = null
 
   function startPolling() {
+    disposed = false
     if (intervalId) clearInterval(intervalId)
     intervalId = setInterval(() => {
       // Don't fetch if tab is not visible
@@ -180,6 +215,13 @@ export function useSentiment() {
   }
 
   function stopPolling() {
+    disposed = true
+    // Abort the in-flight request and invalidate any late completion
+    fetchGeneration++
+    if (activeController) {
+      activeController.abort()
+      activeController = null
+    }
     if (intervalId) {
       clearInterval(intervalId)
       intervalId = null
