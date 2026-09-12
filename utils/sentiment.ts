@@ -141,6 +141,64 @@ export function emotionToColor(state: EmotionState): [number, number, number] {
   ]
 }
 
+// ─── Sampling helpers (issue #70) ────────────────────────────────────────────
+
+/** Normalize an article URL enough to catch the same story from two feeds */
+export function normalizeArticleUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    const path = u.pathname.replace(/\/+$/, '')
+    return `${u.hostname.toLowerCase().replace(/^www\./, '')}${path.toLowerCase()}`
+  } catch {
+    return url.trim().toLowerCase()
+  }
+}
+
+/** Drop later duplicates of the same story (matched on normalized URL) */
+export function dedupeByUrl(articles: Article[]): Article[] {
+  const seen = new Set<string>()
+  const result: Article[] = []
+  for (const article of articles) {
+    const key = article.url ? normalizeArticleUrl(article.url) : ''
+    if (key && seen.has(key)) continue
+    if (key) seen.add(key)
+    result.push(article)
+  }
+  return result
+}
+
+/**
+ * Pick up to `limit` items fairly across groups: one from each group in turn
+ * (round-robin) until the cap is reached, preserving each group's own order.
+ * Used so a large first feed cannot monopolize the HF sample or the Reddit
+ * quota by concatenation order alone.
+ */
+export function roundRobinByKey<T>(items: T[], keyOf: (item: T) => string, limit: number): T[] {
+  if (items.length <= limit) return [...items]
+
+  const groups = new Map<string, T[]>()
+  for (const item of items) {
+    const key = keyOf(item)
+    const group = groups.get(key)
+    if (group) group.push(item)
+    else groups.set(key, [item])
+  }
+
+  const result: T[] = []
+  let queues = [...groups.values()]
+  while (result.length < limit && queues.length > 0) {
+    const survivors: T[][] = []
+    for (const queue of queues) {
+      if (result.length >= limit) break
+      const item = queue.shift()
+      if (item !== undefined) result.push(item)
+      if (queue.length > 0) survivors.push(queue)
+    }
+    queues = survivors
+  }
+  return result
+}
+
 // ─── Pre-compiled regex patterns ─────────────────────────────────────────────
 
 // Word-boundary anchored so short stems don't match inside unrelated words

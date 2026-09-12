@@ -5,6 +5,8 @@ import {
   getDynamicFallbackData as getBaseFallbackData,
   calculateWeightedSentiment,
   aggregateEmotionVectors,
+  dedupeByUrl,
+  roundRobinByKey,
 } from '../../utils/sentiment'
 import { fetchGDELTNews } from './gdeltService'
 import { fetchNewsAPINews } from './newsApiService'
@@ -26,6 +28,11 @@ const TOTAL_BUDGET_MS = 7000
 const SOURCE_PHASE_MS = 5000
 const HF_MIN_BUDGET_MS = 1000
 const HF_SAFETY_MARGIN_MS = 200
+
+// Explicit sampling limits (issue #70)
+const HF_SAMPLE_SIZE = 10       // articles sent to each HF model per cycle
+const REDDIT_MAX_ARTICLES = 20  // spread across subreddits, not first-come
+const MAX_RETURNED_ARTICLES = 50
 
 // Cancellable sleep: the pending timer must be cleared once the race is
 // decided, so it never holds a serverless function open past the response
@@ -75,9 +82,17 @@ export async function aggregateSentiment(
     apiSources.push('NewsAPI')
   }
   if (collected.reddit && collected.reddit.length > 0) {
-    allArticles.push(...collected.reddit.slice(0, 20))
+    // Round-robin across subreddits (each has its own source name), so the
+    // quota is spread over all configured communities instead of whichever
+    // subreddits happened to come first in the fetch order (issue #70)
+    allArticles.push(...roundRobinByKey(collected.reddit, a => a.source, REDDIT_MAX_ARTICLES))
     apiSources.push('Reddit')
   }
+
+  // The same story syndicated through two feeds must only count once
+  const uniqueArticles = dedupeByUrl(allArticles)
+  allArticles.length = 0
+  allArticles.push(...uniqueArticles)
 
   // Synthetic data only when NOTHING real arrived (issue #67: marked as demo)
   if (allArticles.length === 0) {
@@ -92,12 +107,16 @@ export async function aggregateSentiment(
     const remaining = TOTAL_BUDGET_MS - (Date.now() - startedAt) - HF_SAFETY_MARGIN_MS
     if (remaining >= HF_MIN_BUDGET_MS) {
       try {
-        // Top 10 only (as documented in README/ARCHITECTURE): at concurrency 5
-        // that's 2 waves ≈ 2-4s, which fits the remaining budget.
-        const textsToAnalyze = allArticles
-          .map((a, i) => ({ text: `${a.title} ${a.source}`.trim(), index: i }))
+        // Sample of HF_SAMPLE_SIZE (as documented in README/ARCHITECTURE): at
+        // concurrency 5 that's 2 waves ≈ 2-4s, fitting the remaining budget.
+        // Selected round-robin across sources so the world-emotion reading
+        // reflects every available feed, not just the first provider's
+        // concatenation order (issue #70).
+        const eligible = allArticles
+          .map((a, i) => ({ text: `${a.title} ${a.source}`.trim(), index: i, source: a.source }))
           .filter(({ text }) => text.length > 10)
-          .slice(0, 10)
+        const textsToAnalyze = roundRobinByKey(eligible, e => e.source, HF_SAMPLE_SIZE)
+          .map(({ text, index }) => ({ text, index }))
 
         const hfController = new AbortController()
         const hfWork = Promise.all([
@@ -141,7 +160,7 @@ export async function aggregateSentiment(
     sources,
     timestamp: Date.now(),
     apiSources,
-    articles: articlesWithTitles.slice(0, 50),
+    articles: articlesWithTitles.slice(0, MAX_RETURNED_ARTICLES),
     emotion,
     dataMode: 'live',
   }
