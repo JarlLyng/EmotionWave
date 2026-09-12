@@ -104,8 +104,10 @@
           which indexes millions of news articles worldwide. EmotionWave can also
           aggregate <strong class="text-white/90">NewsAPI</strong> and
           <strong class="text-white/90">Reddit</strong> for a broader view of
-          global mood. Sentiment is understood through natural-language analysis
-          of the headlines, not simple keyword matching.
+          global mood. Headlines are scored with a fast keyword method by
+          default; when a Hugging Face API key is configured, a sample of them
+          is additionally analysed with transformer models for sentiment and
+          emotion.
         </p>
       </section>
 
@@ -157,7 +159,7 @@ const faqs = [
   {
     question: "How is the world's mood measured?",
     answer:
-      'Headlines from the last 24 hours are scored for sentiment — the most relevant ones with a Hugging Face transformer model, the rest with fast keyword analysis. The scores are combined with an intensity weighting and normalised to a single value from −1 (negative) to +1 (positive).',
+      'Headlines from the last 24 hours are scored with a fast keyword method; when model analysis is configured, a sample of them is additionally scored with a Hugging Face transformer. The scores are combined with an intensity weighting and normalised to a single value from −1 (negative) to +1 (positive).',
   },
   {
     question: 'Where does the data come from?',
@@ -172,7 +174,7 @@ const faqs = [
   {
     question: 'Does EmotionWave collect my data?',
     answer:
-      'No personal data is collected. EmotionWave only reads public news sentiment; nothing about you is tracked or stored.',
+      'EmotionWave uses Umami, a cookieless, privacy-focused analytics tool, to count anonymous, aggregated page views. No cookies are set, no personal identifiers are stored, and nothing follows you across sites.',
   },
   {
     question: 'Can I install it or use it on mobile?',

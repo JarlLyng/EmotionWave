@@ -40,19 +40,6 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ['public/sw.js'],
-    languageOptions: {
-      globals: {
-        ...globals.serviceworker,
-        ...globals.browser
-      }
-    },
-    plugins: {
-      '@typescript-eslint': tseslint
-    },
-    rules: sharedRules
-  },
-  {
     files: ['**/*.ts'],
     languageOptions: {
       parser: tsParser,

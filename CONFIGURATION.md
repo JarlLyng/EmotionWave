@@ -6,10 +6,10 @@ This document describes all configuration options for EmotionWave.
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `HUGGINGFACE_API_KEY` | HuggingFace API key for advanced sentiment analysis | No (optional, for future use) | - |
+| `HUGGINGFACE_API_KEY` | HuggingFace API key — activates model-based sentiment refinement and emotion classification on a sample of headlines | No (optional) | - |
 | `NEWS_API_KEY` | NewsAPI key for additional news sources | No (optional, improves accuracy) | - |
 | `NUXT_PUBLIC_SITE_URL` | Public URL of the site | No | `http://localhost:3000` |
-| `NUXT_PUBLIC_BASE_URL` | Base URL path (e.g., `/EmotionWave/` for GitHub Pages) | No | `/` (dev) or `/EmotionWave/` (prod) |
+| `NUXT_PUBLIC_BASE_URL` | Base URL path (e.g., `/EmotionWave/` for subdirectory hosting) | No | `/` |
 
 ### Setting Environment Variables
 
@@ -49,13 +49,11 @@ Key configuration in `nuxt.config.ts`:
 ### Base URL
 ```typescript
 app: {
-  baseURL: process.env.NUXT_PUBLIC_BASE_URL || 
-           (process.env.NODE_ENV === 'production' ? '/EmotionWave/' : '/'),
+  baseURL: process.env.NUXT_PUBLIC_BASE_URL || '/',
 }
 ```
-- **Development**: `/` (root)
-- **GitHub Pages**: `/EmotionWave/` (subdirectory)
-- **Root Domain**: `/` (root)
+- **Default**: `/` (root — Vercel is the primary deployment)
+- **Subdirectory hosting**: set `NUXT_PUBLIC_BASE_URL` accordingly
 
 ### Build Assets Directory
 ```typescript
@@ -69,19 +67,20 @@ buildAssetsDir: '_nuxt/'
 nitro: {
   prerender: {
     crawlLinks: false,
-    routes: ['/', '/manifest.json', '/robots.txt', '/sitemap.xml']
+    routes: ['/', '/about', '/robots.txt', '/sitemap.xml']
   }
 }
 ```
-- Static generation for GitHub Pages
-- Dynamic routes generated at build time
+- Prerenders the pages and SEO files at build time
 
 ### TailwindCSS
 ```typescript
-modules: ['@nuxtjs/tailwindcss']
+vite: {
+  plugins: [tailwindcss()],  // @tailwindcss/vite
+}
 ```
-- Integrated via Nuxt module
-- Configuration in `tailwind.config.js`
+- Integrated via the `@tailwindcss/vite` plugin (Tailwind 4)
+- Entry point: `assets/css/main.css` (`@import "tailwindcss"`)
 
 ## Sentiment Analysis Configuration
 
@@ -96,31 +95,26 @@ modules: ['@nuxtjs/tailwindcss']
 ### News Sources
 - **Primary**: GDELT API (always used)
 - **Secondary**: NewsAPI (optional, requires API key)
-  - Uses HuggingFace Inference API for sentiment analysis on top 10 articles (if API key provided)
-  - Remaining articles use fast keyword-based sentiment
-  - Falls back to keyword-based sentiment if HuggingFace unavailable or times out
-- **Social**: Reddit (optional, full weight - social sentiment is valuable)
-  - Uses improved keyword-based sentiment analysis
-  - Top 20 posts selected for better signal
+- **Social**: Reddit (optional, full weight — up to 20 posts spread round-robin across five subreddits)
 - **Languages**: English and Danish news (separate API calls for NewsAPI)
 - **Query**: Focused on politics, technology, society (excludes sports/entertainment)
 - **Time Range**: Last 24 hours
-- **Max Articles**: 30 articles per source
+- **Time budget**: sources get a 5s collection phase; whatever finished is served and stragglers are cancelled (one slow source cannot discard another's results)
+- **Deduplication**: the same story arriving from two feeds is matched on normalized URL and counted once
 - **Aggregation**: Weighted average across all available sources, filtered by valid (non-zero) sentiment
 
 ### Sentiment Analysis Methods
-- **GDELT API**: Uses built-in sentiment/tone fields when available
-- **HuggingFace**: Advanced ML-based sentiment analysis (optional, requires API key)
-  - Model: cardiffnlp/twitter-roberta-base-sentiment-latest
-  - Strategically used on top 10 articles only (prevents timeouts)
-  - 3-second timeout per request to prevent hanging
-  - Falls back to keyword-based if API unavailable or times out
-- **Keyword-based**: Enhanced keyword analysis with weighted scoring
-  - Expanded keyword lists with positive/negative words
-  - Weighted scoring (strong words get higher weight)
-  - Multiple occurrence counting
-  - Text length normalization
-  - Used for all articles beyond top 10 (faster processing)
+- **Keyword-based (always-on baseline)**: word-boundary-anchored keyword lists
+  (English and Danish) with weighted scoring and length normalization —
+  this scores every article, with or without API keys
+- **GDELT API**: built-in sentiment/tone fields used when present
+- **HuggingFace (optional enrichment, requires API key)**:
+  - Sentiment model: cardiffnlp/twitter-roberta-base-sentiment-latest
+  - Emotion model: j-hartmann/emotion-english-distilroberta-base (7 emotions, drives the palette and musical scale)
+  - Applied to a sample of 10 articles selected round-robin across sources
+  - 10-second timeout per request; the whole enrichment phase only gets
+    whatever remains of the endpoint's time budget and is dropped when late
+  - On any failure the keyword scores stand
 
 ### Sentiment Score Range
 - **Range**: -1 (negative) to +1 (positive)
@@ -129,10 +123,11 @@ modules: ['@nuxtjs/tailwindcss']
 - **Data Filtering**: Articles with exactly 0 sentiment are filtered out when calculating averages (likely missing data)
 
 ### Fallback Data
-- **Trigger**: API unavailable or error
-- **Type**: Dynamic time-based data
-- **Update**: Changes based on current time
-- **Indicator**: UI shows "Demo data" badge
+- **Data modes**: every payload carries `dataMode` — `live` (real news),
+  `stale` (client keeps the last good reading during an outage) or `demo`
+  (synthetic time-based data when nothing real was ever received)
+- **Indicator**: the UI badge shows "Demo data" or "Last known mood", and
+  the provenance line under the meter shows mode, providers and reading age
 
 ## Performance Configuration
 
@@ -156,23 +151,17 @@ modules: ['@nuxtjs/tailwindcss']
 - **Resize events**: Throttled to 250ms
 - Prevents performance issues
 
-### Service Worker
-- **Cache Strategy**: Stale-while-revalidate for static assets
-- **Precache**: _nuxt assets discovered from HTML
-- **Offline Fallback**: Cached index.html
-
 ## PWA Configuration
 
-### Manifest
-- Generated dynamically via `server/routes/manifest.json.ts`
-- Uses `NUXT_PUBLIC_BASE_URL` for correct paths
-- Icons: favicon.ico, apple-touch-icon-180x180.png, android-chrome-192x192.png, android-chrome-512x512.png
+PWA generation is fully delegated to `@vite-pwa/nuxt` (configured in the
+`pwa` block of `nuxt.config.ts`):
 
-### Service Worker
-- File: `public/sw.js`
-- Registration: `app.vue` on mount
-- Scope: Matches `baseURL`
-- Cache version: Updated on changes
+- **Service worker**: generated at build time as `sw.js` (Workbox precache
+  of built assets, `autoUpdate` registration handled by the module)
+- **Manifest**: generated as `manifest.webmanifest` with the icons from
+  `public/`
+- The earlier hand-written `public/sw.js` and `server/routes/manifest.json.ts`
+  were superseded by this and have been removed
 
 ## TypeScript Configuration
 
@@ -257,7 +246,6 @@ npm run preview
 ### Base URL Issues
 - Verify `NUXT_PUBLIC_BASE_URL` matches deployment path
 - Check asset paths in browser console
-- Ensure service worker scope matches baseURL
 
 ### API Issues
 - Check environment variables are set
