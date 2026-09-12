@@ -78,9 +78,10 @@
               </h3>
               <div class="space-y-4">
                 <p class="text-white/70 text-base leading-relaxed">
-                  EmotionWave continuously analyzes news articles from global sources every 30 seconds. 
-                  Using state-of-the-art AI models (Hugging Face Transformers), it performs deep semantic 
-                  analysis to calculate a precise sentiment score ranging from -1 (negative) to +1 (positive).
+                  EmotionWave continuously analyzes news headlines from global sources every 30 seconds. 
+                  Headlines are scored with a fast keyword method; when configured, a sample is additionally 
+                  analyzed with Hugging Face transformer models for sentiment and emotion. The combined result 
+                  is a score ranging from -1 (negative) to +1 (positive).
                 </p>
                 <p class="text-white/70 text-base leading-relaxed">
                   This score then influences all elements on the site: particles change color and movement, 
@@ -133,8 +134,9 @@
                 <p class="text-white/70 text-base leading-relaxed">
                   Additionally, the system can aggregate data from <strong class="text-white/90">NewsAPI</strong> 
                    and <strong class="text-white/90">Reddit</strong> 
-                  for a more comprehensive view of global sentiment. We use advanced Natural Language Processing 
-                  to understand the true emotion behind headlines, not just keyword matching.
+                  for a more comprehensive view of global sentiment. Keyword scoring is the always-on baseline; 
+                  optional model analysis enriches a sample of headlines when configured, and clearly labeled 
+                  demo data takes over only when no live source is available.
                 </p>
                 <p class="text-white/70 text-base leading-relaxed">
                   The data is continuously analyzed, and sentiment scores are updated every 30 seconds to 
