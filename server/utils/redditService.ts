@@ -3,9 +3,11 @@ import { RedditResponseSchema } from './schemas'
 
 const FETCH_TIMEOUT_MS = 8000
 
-async function fetchSubreddit(subreddit: string): Promise<Article[]> {
+async function fetchSubreddit(subreddit: string, signal?: AbortSignal): Promise<Article[]> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  const abortListener = () => controller.abort()
+  signal?.addEventListener('abort', abortListener, { once: true })
 
   try {
     const response = await fetch(
@@ -41,14 +43,15 @@ async function fetchSubreddit(subreddit: string): Promise<Article[]> {
     return []
   } finally {
     clearTimeout(timeoutId)
+    signal?.removeEventListener('abort', abortListener)
   }
 }
 
-export async function fetchRedditSentiment(): Promise<Article[]> {
+export async function fetchRedditSentiment(signal?: AbortSignal): Promise<Article[]> {
   const subreddits = ['worldnews', 'news', 'technology', 'science', 'environment']
 
   // Fetch all subreddits in parallel — a slow or hanging subreddit should
   // neither stall the others nor delay the whole aggregation
-  const results = await Promise.all(subreddits.map(fetchSubreddit))
+  const results = await Promise.all(subreddits.map(sub => fetchSubreddit(sub, signal)))
   return results.flat()
 }

@@ -8,15 +8,18 @@ import {
 import { retryWithBackoff } from './retry'
 import { GDELTResponseSchema } from './schemas'
 
-export async function fetchGDELTNews(): Promise<Article[]> {
+export async function fetchGDELTNews(signal?: AbortSignal): Promise<Article[]> {
   const dateRange = getDateRange()
 
   // Total worst case must stay under the endpoint's 8s aggregation deadline
   // (2 attempts × 3.5s timeout + 0.5s backoff ≈ 7.5s), so a hanging GDELT
-  // still leaves room to serve partial data from the other sources.
+  // still leaves room to serve partial data from the other sources. The
+  // caller's signal cancels outstanding work when the source phase closes.
   return retryWithBackoff(async () => {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 3500)
+    const abortListener = () => controller.abort()
+    signal?.addEventListener('abort', abortListener, { once: true })
 
     try {
       const response = await fetch(
@@ -29,8 +32,6 @@ export async function fetchGDELTNews(): Promise<Article[]> {
           headers: { 'User-Agent': 'EmotionWave/1.0' },
         }
       )
-
-      clearTimeout(timeoutId)
 
       if (!response.ok) throw new Error(`GDELT API error: ${response.status}`)
 
@@ -45,9 +46,9 @@ export async function fetchGDELTNews(): Promise<Article[]> {
       if (!rawArticles) return []
 
       return rawArticles.map(normalizeGDELTArticle)
-    } catch (error) {
+    } finally {
       clearTimeout(timeoutId)
-      throw error
+      signal?.removeEventListener('abort', abortListener)
     }
-  }, 2, 500)
+  }, 2, 500, signal)
 }

@@ -21,6 +21,15 @@ export interface Article {
   publishedAt?: string
 }
 
+/**
+ * Where the data actually came from (issue #67):
+ * - live:  real, freshly aggregated news
+ * - stale: a retained last-good snapshot shown during an outage (client-side)
+ * - demo:  synthetic time-based data; nothing real is available
+ * Servers only ever emit 'live' or 'demo'; 'stale' is derived by the client.
+ */
+export type DataMode = 'live' | 'stale' | 'demo'
+
 export interface BaseSentimentData {
   score: number
   timestamp: number
@@ -29,6 +38,18 @@ export interface BaseSentimentData {
     score: number
     articles: number
   }>
+  dataMode?: DataMode
+}
+
+/**
+ * True when a payload is synthetic. Checks the explicit dataMode field and,
+ * for older payloads without it, the legacy Fallback source marker.
+ */
+export function isDemoPayload(data: Pick<BaseSentimentData, 'dataMode' | 'sources'>): boolean {
+  if (data.dataMode === 'demo') return true
+  if (data.dataMode === 'live') return false
+  return Array.isArray(data.sources) && data.sources.length > 0
+    && data.sources.every(s => s.name === 'Fallback')
 }
 
 // ─── Emotion categories (issue #30) ──────────────────────────────────────────
@@ -205,6 +226,7 @@ export function getDynamicFallbackData(): BaseSentimentData {
     sources: [
       { name: 'Fallback', score: finalScore, articles: 0 },
     ],
+    dataMode: 'demo',
   }
 }
 

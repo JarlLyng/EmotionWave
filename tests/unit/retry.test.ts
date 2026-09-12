@@ -41,6 +41,24 @@ describe('retryWithBackoff', () => {
     expect(fn).toHaveBeenCalledTimes(1)
   })
 
+  it('throws immediately when the signal is already aborted', async () => {
+    const fn = vi.fn().mockResolvedValue('ok')
+    const controller = new AbortController()
+    controller.abort()
+    await expect(retryWithBackoff(fn, 3, 100, controller.signal)).rejects.toThrow('Aborted')
+    expect(fn).toHaveBeenCalledTimes(0)
+  })
+
+  it('does not retry after the signal aborts mid-flight', async () => {
+    const controller = new AbortController()
+    const fn = vi.fn().mockImplementation(() => {
+      controller.abort()
+      return Promise.reject(new Error('upstream aborted'))
+    })
+    await expect(retryWithBackoff(fn, 3, 100, controller.signal)).rejects.toThrow('upstream aborted')
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
   it('still retries on 429 rate limiting', async () => {
     vi.useFakeTimers()
     const fn = vi.fn()

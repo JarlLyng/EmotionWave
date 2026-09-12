@@ -2,7 +2,7 @@ import { type Article, getDateRange, keywordBasedSentiment } from '~/utils/senti
 import { retryWithBackoff } from './retry'
 import { NewsAPIResponseSchema } from './schemas'
 
-export async function fetchNewsAPINews(apiKey: string | null): Promise<Article[]> {
+export async function fetchNewsAPINews(apiKey: string | null, signal?: AbortSignal): Promise<Article[]> {
   if (!apiKey) return []
 
   const dateRange = getDateRange()
@@ -12,9 +12,12 @@ export async function fetchNewsAPINews(apiKey: string | null): Promise<Article[]
 
   for (const lang of languages) {
     try {
+      if (signal?.aborted) break
       const rawArticles = await retryWithBackoff(async () => {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 8000)
+        const abortListener = () => controller.abort()
+        signal?.addEventListener('abort', abortListener, { once: true })
 
         try {
           const response = await fetch(
@@ -28,7 +31,6 @@ export async function fetchNewsAPINews(apiKey: string | null): Promise<Article[]
             }
           )
 
-          clearTimeout(timeoutId)
           if (!response.ok) throw new Error(`NewsAPI error: ${response.status}`)
 
           const data = await response.json()
@@ -38,11 +40,11 @@ export async function fetchNewsAPINews(apiKey: string | null): Promise<Article[]
             return []
           }
           return (parsed.data.status === 'ok' && parsed.data.articles) ? parsed.data.articles : []
-        } catch (error) {
+        } finally {
           clearTimeout(timeoutId)
-          throw error
+          signal?.removeEventListener('abort', abortListener)
         }
-      })
+      }, 3, 1000, signal)
 
       // Use keyword sentiment for all articles initially
       for (const article of rawArticles) {

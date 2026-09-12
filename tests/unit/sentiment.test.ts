@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  isDemoPayload,
   normalizeSentiment,
   keywordBasedSentiment,
   getDynamicFallbackData,
@@ -167,5 +168,18 @@ describe('calculateWeightedSentiment', () => {
       make('A', 0),
     ])
     expect(sources[0]!.score).toBe(normalizeSentiment(5))
+  })
+})
+
+describe('isDemoPayload', () => {
+  it('trusts an explicit dataMode over everything else', () => {
+    expect(isDemoPayload({ dataMode: 'demo', sources: [] })).toBe(true)
+    expect(isDemoPayload({ dataMode: 'live', sources: [{ name: 'Fallback', score: 0, articles: 0 }] })).toBe(false)
+  })
+
+  it('detects legacy fallback payloads without a dataMode field', () => {
+    expect(isDemoPayload({ sources: [{ name: 'Fallback', score: 0.3, articles: 0 }] })).toBe(true)
+    expect(isDemoPayload({ sources: [{ name: 'GDELT', score: 0.1, articles: 5 }] })).toBe(false)
+    expect(isDemoPayload({ sources: [] })).toBe(false)
   })
 })
