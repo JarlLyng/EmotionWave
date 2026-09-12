@@ -20,7 +20,15 @@ const nuxtGlobals = {
 }
 
 const sharedRules = {
-  'no-unused-vars': 'warn',
+  // The base rule misreads TypeScript type annotations (it flags parameter
+  // names inside function-type positions); use the TS-aware rule instead,
+  // with the conventional underscore escape hatch
+  'no-unused-vars': 'off',
+  '@typescript-eslint/no-unused-vars': ['warn', {
+    argsIgnorePattern: '^_',
+    varsIgnorePattern: '^_',
+    caughtErrors: 'none'
+  }],
   'no-console': 'off',
   'prefer-const': 'warn',
   'no-empty': ['error', { allowEmptyCatch: true }]
@@ -38,6 +46,9 @@ export default [
         ...globals.serviceworker,
         ...globals.browser
       }
+    },
+    plugins: {
+      '@typescript-eslint': tseslint
     },
     rules: sharedRules
   },
@@ -75,7 +86,8 @@ export default [
       }
     },
     plugins: {
-      vue
+      vue,
+      '@typescript-eslint': tseslint
     },
     rules: sharedRules
   }

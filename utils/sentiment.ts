@@ -141,6 +141,52 @@ export function emotionToColor(state: EmotionState): [number, number, number] {
   ]
 }
 
+// ─── Emotion stability (issue #73) ───────────────────────────────────────────
+
+const LOW_INTENSITY_THRESHOLD = 0.15
+
+type StabilizerLabel = Exclude<EmotionLabel, 'neutral'> | 'none'
+
+/**
+ * Two-reading hysteresis over dominant emotions, advanced only by fresh
+ * measurements (the caller decides freshness, e.g. via payload timestamp).
+ * Missing or low-intensity readings participate as the label 'none', so
+ * falling back to score-driven music obeys the same stability rule as any
+ * other switch. The lookup (`current`) is pure — repeated playback reads
+ * never advance the state.
+ */
+export function createEmotionStabilizer() {
+  let stable: StabilizerLabel | null = null
+  let pending: StabilizerLabel | null = null
+
+  const labelOf = (emotion: EmotionState | null | undefined): StabilizerLabel =>
+    emotion && emotion.intensity >= LOW_INTENSITY_THRESHOLD ? emotion.dominant : 'none'
+
+  return {
+    /** Feed one fresh measurement; cached repetitions must not be re-fed */
+    observe(emotion: EmotionState | null | undefined): void {
+      const label = labelOf(emotion)
+      if (stable === null) {
+        // First reading: adopt immediately
+        stable = label
+        pending = null
+      } else if (label === stable) {
+        pending = null
+      } else if (label === pending) {
+        // Two qualifying consecutive readings — commit the switch
+        stable = label
+        pending = null
+      } else {
+        pending = label
+      }
+    },
+    /** Pure lookup: the musically active dominant, or null for score fallback */
+    current(): Exclude<EmotionLabel, 'neutral'> | null {
+      return stable === null || stable === 'none' ? null : stable
+    },
+  }
+}
+
 // ─── Sampling helpers (issue #70) ────────────────────────────────────────────
 
 /** Normalize an article URL enough to catch the same story from two feeds */
