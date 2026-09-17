@@ -114,10 +114,14 @@ export function useSentiment() {
    */
   function ingest(data: SentimentPayload) {
     if (!isDemoPayload(data)) {
+      // The server can itself serve a retained reading marked 'stale' — real
+      // articles and score from earlier, shown with the honest badge and the
+      // original measurement time
+      const stale = data.dataMode === 'stale'
       lastGoodPayload = data
-      dataMode.value = 'live'
-      isUsingFallback.value = false
-      error.value = null
+      dataMode.value = stale ? 'stale' : 'live'
+      isUsingFallback.value = stale
+      error.value = stale ? 'Live feed unavailable — showing the last real reading' : null
       lastUpdated.value = data.timestamp ?? Date.now()
       // Server payloads carry apiSources; the client GDELT path implies GDELT
       providers.value = data.apiSources ?? ['GDELT']
@@ -174,6 +178,18 @@ export function useSentiment() {
           if (!response.ok) throw new Error(`API returned ${response.status}`)
           return await response.json() as SentimentPayload
         })
+
+        // The server answering with synthetic demo data means every upstream
+        // failed from its network. The visitor's own IP is not subject to
+        // those rate limits, so try GDELT directly before accepting demo.
+        if (isDemoPayload(data) && !disposed) {
+          try {
+            const direct = await boundedAttempt(GDELT_ATTEMPT_TIMEOUT_MS, (signal) => fetchGDELTSentiment(signal))
+            if (!isDemoPayload(direct)) data = direct
+          } catch {
+            // keep the server's demo payload
+          }
+        }
       } catch {
         // A deliberate stop must not cascade into new fallback requests
         if (disposed) return

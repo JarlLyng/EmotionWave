@@ -59,16 +59,9 @@ describe('retryWithBackoff', () => {
     expect(fn).toHaveBeenCalledTimes(1)
   })
 
-  it('still retries on 429 rate limiting', async () => {
-    vi.useFakeTimers()
-    const fn = vi.fn()
-      .mockRejectedValueOnce(new Error('API error: 429'))
-      .mockResolvedValue('ok')
-
-    const promise = retryWithBackoff(fn, 3, 100)
-    await vi.advanceTimersByTimeAsync(100)
-    await expect(promise).resolves.toBe('ok')
-    expect(fn).toHaveBeenCalledTimes(2)
-    vi.useRealTimers()
+  it('fails fast on 429 to protect daily quotas', async () => {
+    const fn = vi.fn().mockRejectedValue(new Error('API error: 429'))
+    await expect(retryWithBackoff(fn, 3, 100)).rejects.toThrow('429')
+    expect(fn).toHaveBeenCalledTimes(1)
   })
 })

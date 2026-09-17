@@ -34,6 +34,25 @@ const HF_SAMPLE_SIZE = 10       // articles sent to each HF model per cycle
 const REDDIT_MAX_ARTICLES = 20  // spread across subreddits, not first-come
 const MAX_RETURNED_ARTICLES = 50
 
+// Retained last-good snapshot: when every upstream fails (GDELT rate limits,
+// NewsAPI quota, Reddit blocking cloud IPs — all observed in production),
+// serving the last real reading marked 'stale' beats synthetic demo data.
+// Module memory only, so it helps warm serverless instances.
+const RETAINED_MAX_AGE_MS = 6 * 60 * 60 * 1000
+let retainedSnapshot: ServerSentimentData | null = null
+
+/** The last good aggregation, marked stale — or null if too old/absent */
+export function getRetainedSnapshot(): ServerSentimentData | null {
+  if (!retainedSnapshot) return null
+  if (Date.now() - retainedSnapshot.timestamp > RETAINED_MAX_AGE_MS) return null
+  return { ...retainedSnapshot, dataMode: 'stale' }
+}
+
+/** Test hook */
+export function clearRetainedSnapshot(): void {
+  retainedSnapshot = null
+}
+
 // Cancellable sleep: the pending timer must be cleared once the race is
 // decided, so it never holds a serverless function open past the response
 function budgetTimer(ms: number): { promise: Promise<null>; cancel: () => void } {
@@ -94,8 +113,12 @@ export async function aggregateSentiment(
   allArticles.length = 0
   allArticles.push(...uniqueArticles)
 
-  // Synthetic data only when NOTHING real arrived (issue #67: marked as demo)
+  // Nothing real arrived: prefer the retained last-good reading (marked
+  // stale) over synthetic demo data — real headlines from an hour ago tell
+  // the truth better than a sine wave (issue #67)
   if (allArticles.length === 0) {
+    const retained = getRetainedSnapshot()
+    if (retained) return retained
     const fallback = getBaseFallbackData()
     return { ...fallback, apiSources: ['Fallback'], articles: [], dataMode: 'demo' }
   }
@@ -155,7 +178,7 @@ export async function aggregateSentiment(
   const { score, sources } = calculateWeightedSentiment(allArticles)
   const articlesWithTitles = allArticles.filter(a => a.title && a.title.trim().length > 0)
 
-  return {
+  const result: ServerSentimentData = {
     score,
     sources,
     timestamp: Date.now(),
@@ -164,4 +187,6 @@ export async function aggregateSentiment(
     emotion,
     dataMode: 'live',
   }
+  retainedSnapshot = result
+  return result
 }

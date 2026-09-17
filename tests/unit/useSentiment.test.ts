@@ -112,3 +112,41 @@ describe('useSentiment fetch bounds and cancellation (issue #71)', () => {
     expect(s.isUsingFallback.value).toBe(true)
   })
 })
+
+describe('outage resilience (server demo → client rescue / server stale)', () => {
+  it('tries GDELT directly when the server answers with demo data', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => getDynamicFallbackData() })
+    gdelt.mockResolvedValue(livePayload)
+
+    const s = useSentiment()
+    await s.fetchSentiment()
+
+    expect(gdelt).toHaveBeenCalledTimes(1)
+    expect(s.dataMode.value).toBe('live')
+    expect(s.articles.value[0]?.title).toBe('Live headline')
+  })
+
+  it('keeps the server demo payload when the direct attempt also fails', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => getDynamicFallbackData() })
+    gdelt.mockResolvedValue(getDynamicFallbackData())
+
+    const s = useSentiment()
+    await s.fetchSentiment()
+
+    expect(s.dataMode.value).toBe('demo')
+  })
+
+  it('honors a server-retained stale payload with its original timestamp', async () => {
+    const stalePayload = { ...livePayload, dataMode: 'stale' as const, timestamp: 12345 }
+    fetchMock.mockResolvedValue({ ok: true, json: async () => stalePayload })
+
+    const s = useSentiment()
+    await s.fetchSentiment()
+
+    expect(gdelt).not.toHaveBeenCalled()
+    expect(s.dataMode.value).toBe('stale')
+    expect(s.articles.value[0]?.title).toBe('Live headline')
+    expect(s.lastUpdated.value).toBe(12345)
+    expect(s.isUsingFallback.value).toBe(true)
+  })
+})
