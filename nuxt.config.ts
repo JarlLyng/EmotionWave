@@ -44,6 +44,7 @@ export default defineNuxtConfig({
     // Private keys (server-side only)
     newsApiKey: process.env.NEWS_API_KEY,
     huggingFaceKey: process.env.HUGGINGFACE_API_KEY,
+    guardianApiKey: process.env.GUARDIAN_API_KEY,
     // Public config (accessible on client)
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
