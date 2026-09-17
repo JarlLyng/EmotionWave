@@ -1,5 +1,5 @@
 import { getDynamicFallbackData as getBaseFallbackData } from '~/utils/sentiment'
-import { aggregateSentiment } from '../utils/sentimentAggregator'
+import { aggregateSentiment, getRetainedSnapshot } from '../utils/sentimentAggregator'
 
 // Hard ceiling on aggregation time. Upstream retries can stack up past the
 // serverless function limit, in which case the client would see a raw
@@ -22,8 +22,11 @@ export default defineCachedEventHandler(async () => {
     return await Promise.race([aggregateSentiment(newsApiKey, huggingFaceKey), deadline])
   } catch (error) {
     console.error('Error aggregating sentiment data:', error)
+    // Deadline exceeded or hard failure: last real reading beats demo
+    const retained = getRetainedSnapshot()
+    if (retained) return retained
     const fallback = getBaseFallbackData()
-    return { ...fallback, apiSources: ['Fallback'], articles: [] }
+    return { ...fallback, apiSources: ['Fallback'], articles: [], dataMode: 'demo' as const }
   } finally {
     if (deadlineTimer) clearTimeout(deadlineTimer)
   }

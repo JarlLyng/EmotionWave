@@ -9,7 +9,7 @@ vi.mock('../../server/utils/huggingFaceService', () => ({
   batchAnalyzeEmotions: vi.fn(),
 }))
 
-import { aggregateSentiment } from '../../server/utils/sentimentAggregator'
+import { aggregateSentiment, clearRetainedSnapshot } from '../../server/utils/sentimentAggregator'
 import { fetchGDELTNews } from '../../server/utils/gdeltService'
 import { fetchNewsAPINews } from '../../server/utils/newsApiService'
 import { fetchRedditSentiment } from '../../server/utils/redditService'
@@ -30,6 +30,7 @@ const never = () => new Promise<never>(() => {})
 beforeEach(() => {
   vi.useFakeTimers()
   vi.clearAllMocks()
+  clearRetainedSnapshot()
 })
 
 afterEach(() => {
@@ -154,5 +155,40 @@ describe('aggregateSentiment sampling (issue #70)', () => {
     const result = await aggregateSentiment(null, null)
     expect(result.articles).toHaveLength(1)
     expect(result.articles?.[0]?.source).toBe('GDELT')
+  })
+})
+
+describe('retained snapshot during total outage', () => {
+  it('serves the last good reading marked stale instead of demo', async () => {
+    gdelt.mockResolvedValue([article('Yesterday news', 3)])
+    news.mockResolvedValue([])
+    reddit.mockResolvedValue([])
+    const live = await aggregateSentiment(null, null)
+    expect(live.dataMode).toBe('live')
+
+    // Total outage on the next cycle
+    gdelt.mockRejectedValue(new Error('429'))
+    reddit.mockRejectedValue(new Error('403'))
+    const later = await aggregateSentiment(null, null)
+
+    expect(later.dataMode).toBe('stale')
+    expect(later.articles?.[0]?.title).toBe('Yesterday news')
+    expect(later.apiSources).toEqual(['GDELT'])
+    // Original measurement time is preserved for the provenance display
+    expect(later.timestamp).toBe(live.timestamp)
+  })
+
+  it('expires the snapshot after six hours and falls back to demo', async () => {
+    gdelt.mockResolvedValue([article('Old news', 3)])
+    news.mockResolvedValue([])
+    reddit.mockResolvedValue([])
+    await aggregateSentiment(null, null)
+
+    vi.advanceTimersByTime(6 * 60 * 60 * 1000 + 1)
+    gdelt.mockRejectedValue(new Error('429'))
+    reddit.mockRejectedValue(new Error('403'))
+    const later = await aggregateSentiment(null, null)
+
+    expect(later.dataMode).toBe('demo')
   })
 })
