@@ -8,18 +8,24 @@ vi.mock('../../server/utils/huggingFaceService', () => ({
   batchAnalyzeWithHuggingFace: vi.fn(),
   batchAnalyzeEmotions: vi.fn(),
 }))
+vi.mock('../../server/utils/rssService', () => ({ fetchRssHeadlines: vi.fn() }))
+vi.mock('../../server/utils/guardianService', () => ({ fetchGuardianNews: vi.fn() }))
 
 import { aggregateSentiment, clearRetainedSnapshot } from '../../server/utils/sentimentAggregator'
 import { fetchGDELTNews } from '../../server/utils/gdeltService'
 import { fetchNewsAPINews } from '../../server/utils/newsApiService'
 import { fetchRedditSentiment } from '../../server/utils/redditService'
 import { batchAnalyzeWithHuggingFace, batchAnalyzeEmotions } from '../../server/utils/huggingFaceService'
+import { fetchRssHeadlines } from '../../server/utils/rssService'
+import { fetchGuardianNews } from '../../server/utils/guardianService'
 
 const gdelt = vi.mocked(fetchGDELTNews)
 const news = vi.mocked(fetchNewsAPINews)
 const reddit = vi.mocked(fetchRedditSentiment)
 const hfSentiment = vi.mocked(batchAnalyzeWithHuggingFace)
 const hfEmotions = vi.mocked(batchAnalyzeEmotions)
+const rss = vi.mocked(fetchRssHeadlines)
+const guardian = vi.mocked(fetchGuardianNews)
 
 const article = (title: string, sentiment = 2): Article => ({
   title, sentiment, url: 'https://example.com', source: 'Example',
@@ -31,6 +37,8 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.clearAllMocks()
   clearRetainedSnapshot()
+  rss.mockResolvedValue([])
+  guardian.mockResolvedValue([])
 })
 
 afterEach(() => {
@@ -190,5 +198,32 @@ describe('retained snapshot during total outage', () => {
     const later = await aggregateSentiment(null, null)
 
     expect(later.dataMode).toBe('demo')
+  })
+})
+
+describe('keyless RSS and Guardian sources', () => {
+  it('keeps the reading live on RSS alone when every API fails', async () => {
+    gdelt.mockRejectedValue(new Error('429'))
+    news.mockResolvedValue([])
+    reddit.mockRejectedValue(new Error('403'))
+    rss.mockResolvedValue([article('BBC world headline')])
+
+    const result = await aggregateSentiment(null, null)
+
+    expect(result.dataMode).toBe('live')
+    expect(result.apiSources).toEqual(['RSS'])
+    expect(result.articles?.[0]?.title).toBe('BBC world headline')
+  })
+
+  it('includes Guardian when a key is provided', async () => {
+    gdelt.mockResolvedValue([])
+    news.mockResolvedValue([])
+    reddit.mockResolvedValue([])
+    guardian.mockResolvedValue([article('Guardian world headline')])
+
+    const result = await aggregateSentiment(null, null, 'guardian-key')
+
+    expect(guardian.mock.calls[0]?.[0]).toBe('guardian-key')
+    expect(result.apiSources).toEqual(['Guardian'])
   })
 })

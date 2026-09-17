@@ -7,6 +7,7 @@ This document describes all configuration options for EmotionWave.
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
 | `HUGGINGFACE_API_KEY` | HuggingFace API key — activates model-based sentiment refinement and emotion classification on a sample of headlines | No (optional) | - |
+| `GUARDIAN_API_KEY` | The Guardian Open Platform key (free developer tier: https://open-platform.theguardian.com/access/) — adds Guardian world news as a source | No (optional) | - |
 | `NEWS_API_KEY` | NewsAPI key for additional news sources | No (optional, improves accuracy) | - |
 | `NUXT_PUBLIC_SITE_URL` | Public URL of the site | No | `http://localhost:3000` |
 | `NUXT_PUBLIC_BASE_URL` | Base URL path (e.g., `/EmotionWave/` for subdirectory hosting) | No | `/` |
@@ -94,7 +95,9 @@ vite: {
 
 ### News Sources
 - **Primary**: GDELT API (always used)
+- **Keyless RSS**: BBC World and NPR World feeds (always used — no key, no quota; the most outage-resistant source)
 - **Secondary**: NewsAPI (optional, requires API key)
+- **The Guardian**: world section via the free Open Platform developer key (optional)
 - **Social**: Reddit (optional, full weight — up to 20 posts spread round-robin across five subreddits)
 - **Languages**: English and Danish news (separate API calls for NewsAPI)
 - **Query**: Focused on politics, technology, society (excludes sports/entertainment)

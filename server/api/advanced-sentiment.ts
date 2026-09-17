@@ -10,6 +10,7 @@ export default defineCachedEventHandler(async () => {
   const config = useRuntimeConfig()
   const newsApiKey = (config.newsApiKey || process.env.NEWS_API_KEY || null) as string | null
   const huggingFaceKey = (config.huggingFaceKey || process.env.HUGGINGFACE_API_KEY || null) as string | null
+  const guardianApiKey = (config.guardianApiKey || process.env.GUARDIAN_API_KEY || null) as string | null
 
   let deadlineTimer: ReturnType<typeof setTimeout> | undefined
   try {
@@ -19,7 +20,7 @@ export default defineCachedEventHandler(async () => {
         AGGREGATION_DEADLINE_MS
       )
     })
-    return await Promise.race([aggregateSentiment(newsApiKey, huggingFaceKey), deadline])
+    return await Promise.race([aggregateSentiment(newsApiKey, huggingFaceKey, guardianApiKey), deadline])
   } catch (error) {
     console.error('Error aggregating sentiment data:', error)
     // Deadline exceeded or hard failure: last real reading beats demo

@@ -11,6 +11,8 @@ import {
 import { fetchGDELTNews } from './gdeltService'
 import { fetchNewsAPINews } from './newsApiService'
 import { fetchRedditSentiment } from './redditService'
+import { fetchRssHeadlines } from './rssService'
+import { fetchGuardianNews } from './guardianService'
 import { batchAnalyzeWithHuggingFace, batchAnalyzeEmotions } from './huggingFaceService'
 
 export interface ServerSentimentData extends BaseSentimentData {
@@ -63,7 +65,8 @@ function budgetTimer(ms: number): { promise: Promise<null>; cancel: () => void }
 
 export async function aggregateSentiment(
   newsApiKey: string | null,
-  huggingFaceKey: string | null
+  huggingFaceKey: string | null,
+  guardianApiKey: string | null = null
 ): Promise<ServerSentimentData> {
   const startedAt = Date.now()
   const apiSources: string[] = []
@@ -71,7 +74,7 @@ export async function aggregateSentiment(
 
   // ── Source phase: collect whatever finishes within the phase budget ──
   const sourceController = new AbortController()
-  const collected: { gdelt?: Article[]; news?: Article[]; reddit?: Article[] } = {}
+  const collected: { gdelt?: Article[]; news?: Article[]; reddit?: Article[]; rss?: Article[]; guardian?: Article[] } = {}
 
   const sourceWork = Promise.all([
     fetchGDELTNews(sourceController.signal)
@@ -82,6 +85,12 @@ export async function aggregateSentiment(
       .catch(() => {}),
     fetchRedditSentiment(sourceController.signal)
       .then((v) => { collected.reddit = v })
+      .catch(() => {}),
+    fetchRssHeadlines(sourceController.signal)
+      .then((v) => { collected.rss = v })
+      .catch(() => {}),
+    fetchGuardianNews(guardianApiKey, sourceController.signal)
+      .then((v) => { collected.guardian = v })
       .catch(() => {}),
   ])
 
@@ -99,6 +108,14 @@ export async function aggregateSentiment(
   if (collected.news && collected.news.length > 0) {
     allArticles.push(...collected.news)
     apiSources.push('NewsAPI')
+  }
+  if (collected.rss && collected.rss.length > 0) {
+    allArticles.push(...collected.rss)
+    apiSources.push('RSS')
+  }
+  if (collected.guardian && collected.guardian.length > 0) {
+    allArticles.push(...collected.guardian)
+    apiSources.push('Guardian')
   }
   if (collected.reddit && collected.reddit.length > 0) {
     // Round-robin across subreddits (each has its own source name), so the
