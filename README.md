@@ -28,6 +28,8 @@ Exact dependency versions live in [package.json](./package.json).
 
 ### Visual Expression
 - Dynamic particle system that reacts to sentiment (1000-2000 particles based on device)
+- Soft, round particles of varying size, drawn by a custom shader
+- **Emotion-driven motion**: joy rises and glows, sadness falls like slow rain, anger is fast and hard-edged, fear trembles and flickers, surprise sparkles; mixed moods blend
 - Color transitions based on mood with smooth animations
 - **Emotion-aware palette**: when emotion analysis is available, colors blend distinct hues for anger, fear, joy, sadness, surprise and disgust instead of a single negative-positive axis
 - Interactive mouse-based particle movement

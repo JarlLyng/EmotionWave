@@ -17,6 +17,7 @@ import type {
 } from 'three'
 
 import { emotionToColor, type EmotionState } from '~/utils/sentiment'
+import { motionProfileFor, lerpProfileInPlace, neutralProfile, type MotionProfile } from '~/utils/motionProfile'
 
 const props = defineProps<{
   sentimentScore?: number
@@ -62,6 +63,11 @@ let targetBgB = 0.09
 
 // Bloom target
 let targetBloomStrength = 1.2
+
+// Emotion-driven motion and particle shape, eased toward its target
+const currentProfile: MotionProfile = neutralProfile(0)
+let targetProfile: MotionProfile = neutralProfile(0)
+let particleMaterial: any = null
 
 const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
@@ -197,6 +203,10 @@ const createParticles = (THREE: typeof import('three')) => {
   const geometry = new THREE.BufferGeometry()
   const positions = new Float32Array(particleCount * 3)
   const colors = new Float32Array(particleCount * 3)
+  // Per-particle size (skewed small, with the odd large bokeh orb) and a
+  // seed that desynchronises the twinkle
+  const sizes = new Float32Array(particleCount)
+  const seeds = new Float32Array(particleCount)
 
   // Phase offsets for organic movement
   particlePhases = new Float32Array(particleCount * 3)
@@ -213,23 +223,91 @@ const createParticles = (THREE: typeof import('three')) => {
     particlePhases[i * 3] = Math.random() * Math.PI * 2
     particlePhases[i * 3 + 1] = Math.random() * Math.PI * 2
     particlePhases[i * 3 + 2] = Math.random() * Math.PI * 2
+
+    sizes[i] = 0.35 + Math.pow(Math.random(), 3) * 1.6
+    seeds[i] = Math.random()
   }
 
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1))
+  geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1))
 
-  const material = new THREE.PointsMaterial({
-    size: isMobile ? 1.5 : 2.0,
+  // A plain PointsMaterial renders every point as a square. This shader
+  // draws round points whose edge morphs between a soft glowing orb and a
+  // crisp disc (uHardness), with per-particle size and twinkle.
+  particleMaterial = new THREE.ShaderMaterial({
+    uniforms: THREE.UniformsUtils.merge([
+      THREE.UniformsLib.fog,
+      {
+        uSize: { value: isMobile ? 1.6 : 2.0 },
+        uScale: { value: pointScale() },
+        uMaxSize: { value: maxPointSize() },
+        uTime: { value: 0 },
+        uHardness: { value: currentProfile.hardness },
+        uTwinkle: { value: currentProfile.twinkle },
+      },
+    ]),
+    vertexShader: `
+      attribute float aSize;
+      attribute float aSeed;
+      uniform float uSize;
+      uniform float uScale;
+      uniform float uMaxSize;
+      uniform float uTime;
+      uniform float uTwinkle;
+      varying vec3 vColor;
+      varying float vAlpha;
+      #include <fog_pars_vertex>
+      void main() {
+        vColor = color;
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        float size = uSize * aSize * (uScale / -mvPosition.z);
+        gl_PointSize = min(size, uMaxSize);
+        gl_Position = projectionMatrix * mvPosition;
+        float flicker = 0.5 + 0.5 * sin(uTime * (1.5 + aSeed * 3.0) + aSeed * 6.2831);
+        // Particles close to the camera fade into faint bokeh instead of
+        // blooming into haze that drowns the headline
+        float nearFade = clamp(14.0 / size, 0.25, 1.0);
+        vAlpha = (1.0 - uTwinkle * flicker) * nearFade;
+        #include <fog_vertex>
+      }
+    `,
+    fragmentShader: `
+      uniform float uHardness;
+      varying vec3 vColor;
+      varying float vAlpha;
+      #include <fog_pars_fragment>
+      void main() {
+        float d = length(gl_PointCoord - 0.5) * 2.0;
+        if (d > 1.0) discard;
+        float soft = pow(1.0 - d, 2.0);
+        float crisp = 1.0 - smoothstep(1.0 - mix(0.35, 0.05, uHardness), 1.0, d);
+        gl_FragColor = vec4(vColor, mix(soft, crisp, uHardness) * vAlpha * 0.9);
+        #include <fog_fragment>
+      }
+    `,
     vertexColors: true,
     transparent: true,
-    opacity: 0.9,
-    sizeAttenuation: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    fog: true,
   })
 
-  particles = new THREE.Points(geometry, material)
+  particles = new THREE.Points(geometry, particleMaterial)
   scene.add(particles)
+}
+
+/** Matches PointsMaterial's size attenuation so sizes read the same */
+function pointScale(): number {
+  const pixelRatio = isMobile ? 1 : Math.min(window.devicePixelRatio, 2)
+  return window.innerHeight * pixelRatio * 0.5
+}
+
+/** Upper bound on on-screen particle size, in device pixels */
+function maxPointSize(): number {
+  const pixelRatio = isMobile ? 1 : Math.min(window.devicePixelRatio, 2)
+  return 36 * pixelRatio
 }
 
 // ─── Animation loop ──────────────────────────────────────────────────────────
@@ -240,16 +318,24 @@ const animate = (): void => {
     return
   }
 
-  const score = props.sentimentScore ?? 0
+  // Ease the motion profile toward the current emotion
+  lerpProfileInPlace(currentProfile, targetProfile, 0.01)
+  if (particleMaterial) {
+    particleMaterial.uniforms.uTime.value = performance.now() * 0.001
+    particleMaterial.uniforms.uHardness.value = currentProfile.hardness
+    particleMaterial.uniforms.uTwinkle.value = prefersReducedMotion ? 0 : currentProfile.twinkle
+  }
 
   // ── Organic particle movement ──
   if (!prefersReducedMotion) {
-    particles.rotation.x += 0.0003
-    particles.rotation.y += 0.0004
+    particles.rotation.x += 0.0003 * currentProfile.spin
+    particles.rotation.y += 0.0004 * currentProfile.spin
 
     const positions = particles.geometry.attributes.position!.array as Float32Array
     const time = Date.now() * 0.0005
-    const sentimentSpeed = 0.02 + Math.abs(score) * 0.04
+    const jitterTime = Date.now() * 0.02
+    const sentimentSpeed = currentProfile.speed
+    const { drift, turbulence } = currentProfile
 
     if (particlePhases) {
       for (let i = 0; i < positions.length; i += 3) {
@@ -266,8 +352,12 @@ const animate = (): void => {
                  + Math.sin(time * 1.1 + py * 1.7) * 0.3
                  + Math.sin(time * 2.3 + py * 1.3) * 0.2
 
-        let x = positions[i]! + nx * sentimentSpeed
-        let y = positions[i + 1]! + ny * sentimentSpeed
+        // Fast trembling (fear, anger) on top of the slow drift
+        const jx = turbulence ? Math.sin(jitterTime + px * 7.3) * turbulence : 0
+        const jy = turbulence ? Math.sin(jitterTime * 1.3 + py * 5.1) * turbulence : 0
+
+        let x = positions[i]! + nx * sentimentSpeed + jx
+        let y = positions[i + 1]! + ny * sentimentSpeed + jy + drift
         let z = positions[i + 2]!
 
         // Z-axis drift for depth (skip on mobile)
@@ -364,6 +454,8 @@ function updateSentimentTargets(score: number) {
     ? mapRange(props.emotion.intensity, 0, 1, 0.8, 2.0)
     : mapRange(score, -1, 1, 0.8, 2.0)
   targetBloomStrength = isMobile ? baseStrength * 0.6 : baseStrength
+
+  targetProfile = motionProfileFor(props.emotion, score)
 }
 
 watch([() => props.sentimentScore, () => props.emotion], () => {
@@ -426,6 +518,10 @@ const handleResize = () => {
     renderer.setSize(window.innerWidth, window.innerHeight)
     renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2))
     composer.setSize(window.innerWidth, window.innerHeight)
+    if (particleMaterial) {
+      particleMaterial.uniforms.uScale.value = pointScale()
+      particleMaterial.uniforms.uMaxSize.value = maxPointSize()
+    }
 
     resizeTimeout = null
   }, 250)
