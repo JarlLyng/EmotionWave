@@ -4,15 +4,20 @@
     class="fixed inset-0 flex items-center justify-center pointer-events-none z-10"
   >
     <div class="max-w-4xl px-8 text-center">
+      <!-- Hovering the headline holds it in place while it is read. The
+           particle field listens on window, so this does not block it. -->
       <h2
         :key="currentHeadline.title"
-        class="text-2xl md:text-3xl lg:text-4xl font-light text-white/90 drop-shadow-lg transition-opacity duration-500"
+        class="text-2xl md:text-3xl lg:text-4xl font-light text-white/90 drop-shadow-lg transition-opacity duration-500 pointer-events-auto"
         :class="{ 'opacity-0': isTransitioning, 'opacity-100': !isTransitioning }"
+        @mouseenter="headlineHover = true"
+        @mouseleave="headlineHover = false"
       >
         {{ currentHeadline.title }}
       </h2>
 
-      <!-- Provenance row (issue #75): publisher link, pause control. Only for
+      <!-- Provenance row (issue #75): publisher link, plus a pause control
+           that stays visually hidden until reached by keyboard. Only for
            real articles — fallback/status lines stay plain text. -->
       <div
         class="mt-4 flex items-center justify-center gap-3 pointer-events-auto text-sm text-white/50 transition-opacity duration-500"
@@ -37,11 +42,9 @@
           v-if="validArticles.length > 1"
           type="button"
           class="pause-button"
-          :aria-pressed="manualPause"
-          :aria-label="manualPause ? 'Resume headline rotation' : 'Pause headline rotation'"
           @click="manualPause = !manualPause"
         >
-          {{ manualPause ? '▶' : '❚❚' }}
+          {{ manualPause ? 'Resume headlines' : 'Pause headlines' }}
         </button>
       </div>
     </div>
@@ -67,10 +70,12 @@ const props = defineProps<Props>()
 
 const currentIndex = ref(0)
 const isTransitioning = ref(false)
-// Rotation pauses while the user hovers/focuses the provenance row, when
-// they press pause, and by default under prefers-reduced-motion (issue #75)
+// Rotation pauses while the user hovers the headline or hovers/focuses the
+// provenance row, when they toggle the keyboard pause control, and by
+// default under prefers-reduced-motion (issue #75, WCAG 2.2.2)
 const manualPause = ref(false)
 const interactionPause = ref(false)
+const headlineHover = ref(false)
 let intervalId: ReturnType<typeof setInterval> | null = null
 
 // Filter articles with valid titles
@@ -92,7 +97,7 @@ const currentLink = computed(() =>
   isRealArticle.value ? safeArticleUrl(currentHeadline.value?.url) : null
 )
 
-const isPaused = computed(() => manualPause.value || interactionPause.value)
+const isPaused = computed(() => manualPause.value || interactionPause.value || headlineHover.value)
 
 function rotateHeadline() {
   if (validArticles.value.length <= 1 || isPaused.value) return
@@ -147,8 +152,8 @@ function handleVisibilityChange() {
 }
 
 onMounted(() => {
-  // Under reduced motion the rotation starts paused; the pause button
-  // doubles as an explicit opt back in
+  // Under reduced motion the rotation starts paused; keyboard users can
+  // opt back in through the pause control
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     manualPause.value = true
   }
@@ -166,22 +171,27 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.pause-button {
-  min-width: 1.9rem;
-  height: 1.9rem;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(0, 0, 0, 0.3);
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.6rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease;
+/* Visually hidden until reached by keyboard, so it never clutters the piece
+   for mouse users while still satisfying WCAG 2.2.2 for keyboard users */
+.pause-button:not(:focus-visible) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
-.pause-button:hover,
 .pause-button:focus-visible {
-  color: rgba(255, 255, 255, 0.9);
-  border-color: rgba(255, 255, 255, 0.5);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.75rem;
+  outline: none;
 }
 </style>
