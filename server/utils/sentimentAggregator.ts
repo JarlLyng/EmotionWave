@@ -28,6 +28,11 @@ export interface ServerSentimentData extends BaseSentimentData {
 // the phase deadline is served, and stragglers are cancelled.
 const TOTAL_BUDGET_MS = 7000
 const SOURCE_PHASE_MS = 5000
+// Once any source has delivered articles, stragglers get this much longer.
+// Without it a hanging source (GDELT from Vercel's network) held the phase
+// open for the full 5s, leaving HF ~1.8s — too little for its ~2-4s, so the
+// emotion reading was silently dropped on every production request.
+const SOURCE_GRACE_MS = 1500
 const HF_MIN_BUDGET_MS = 1000
 const HF_SAFETY_MARGIN_MS = 200
 
@@ -76,27 +81,35 @@ export async function aggregateSentiment(
   const sourceController = new AbortController()
   const collected: { gdelt?: Article[]; news?: Article[]; reddit?: Article[]; rss?: Article[]; guardian?: Article[] } = {}
 
+  // The grace window opens on the first non-empty delivery; an empty result
+  // (missing key, blocked source) must not start it
+  const grace: { timer: ReturnType<typeof budgetTimer> | null } = { timer: null }
+  let resolveGrace: () => void = () => {}
+  const graceElapsed = new Promise<null>(resolve => { resolveGrace = () => resolve(null) })
+
+  const collect = (key: keyof typeof collected, work: Promise<Article[]>) =>
+    work
+      .then((articles) => {
+        collected[key] = articles
+        if (articles.length > 0 && !grace.timer) {
+          grace.timer = budgetTimer(SOURCE_GRACE_MS)
+          void grace.timer.promise.then(resolveGrace)
+        }
+      })
+      .catch(() => {})
+
   const sourceWork = Promise.all([
-    fetchGDELTNews(sourceController.signal)
-      .then((v) => { collected.gdelt = v })
-      .catch(() => {}),
-    fetchNewsAPINews(newsApiKey, sourceController.signal)
-      .then((v) => { collected.news = v })
-      .catch(() => {}),
-    fetchRedditSentiment(sourceController.signal)
-      .then((v) => { collected.reddit = v })
-      .catch(() => {}),
-    fetchRssHeadlines(sourceController.signal)
-      .then((v) => { collected.rss = v })
-      .catch(() => {}),
-    fetchGuardianNews(guardianApiKey, sourceController.signal)
-      .then((v) => { collected.guardian = v })
-      .catch(() => {}),
+    collect('gdelt', fetchGDELTNews(sourceController.signal)),
+    collect('news', fetchNewsAPINews(newsApiKey, sourceController.signal)),
+    collect('reddit', fetchRedditSentiment(sourceController.signal)),
+    collect('rss', fetchRssHeadlines(sourceController.signal)),
+    collect('guardian', fetchGuardianNews(guardianApiKey, sourceController.signal)),
   ])
 
   const sourcePhase = budgetTimer(SOURCE_PHASE_MS)
-  await Promise.race([sourceWork, sourcePhase.promise])
+  await Promise.race([sourceWork, sourcePhase.promise, graceElapsed])
   sourcePhase.cancel()
+  grace.timer?.cancel()
   // Phase closed: cancel stragglers (a no-op when everything already settled).
   // Their retries and pending requests stop instead of running past the response.
   sourceController.abort()

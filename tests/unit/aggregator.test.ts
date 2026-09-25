@@ -227,3 +227,58 @@ describe('keyless RSS and Guardian sources', () => {
     expect(result.apiSources).toEqual(['Guardian'])
   })
 })
+
+describe('source-phase grace window', () => {
+  const later = <T>(ms: number, value: T) => () => new Promise<T>(resolve => setTimeout(() => resolve(value), ms))
+
+  it('keeps emotion enrichment when a hanging source would have eaten the budget', async () => {
+    // Production: GDELT hangs, RSS answers at once, HF needs ~2.5s. Waiting
+    // the full 5s source phase left HF 1.8s and emotion was always dropped.
+    gdelt.mockImplementation(never)
+    news.mockResolvedValue([])
+    reddit.mockResolvedValue([])
+    rss.mockResolvedValue([article('BBC world headline', 2)])
+    hfSentiment.mockImplementation(later(2500, new Map([[0, 5]])))
+    hfEmotions.mockImplementation(later(2500, new Map([[0, {
+      anger: 0.6, disgust: 0, fear: 0.1, joy: 0, neutral: 0.3, sadness: 0, surprise: 0,
+    }]])))
+
+    const promise = aggregateSentiment(null, 'hf-key')
+    await vi.advanceTimersByTimeAsync(7001)
+    const result = await promise
+
+    expect(result.apiSources).toEqual(['RSS', 'HuggingFace'])
+    expect(result.emotion?.dominant).toBe('anger')
+    // The hanging source was cut off when the grace window closed
+    expect(gdelt.mock.calls[0]?.[0]?.aborted).toBe(true)
+  })
+
+  it('still includes a source that arrives within the grace window', async () => {
+    rss.mockResolvedValue([article('Fast RSS headline')])
+    gdelt.mockImplementation(later(1000, [article('Slightly slower GDELT headline')]))
+    news.mockResolvedValue([])
+    reddit.mockImplementation(never)
+
+    const promise = aggregateSentiment(null, null)
+    await vi.advanceTimersByTimeAsync(5001)
+    const result = await promise
+
+    expect(result.apiSources).toEqual(['GDELT', 'RSS'])
+  })
+
+  it('does not open the grace window on empty results', async () => {
+    // Keyless/blocked sources answering [] instantly must not cut off a
+    // slower source that actually has articles
+    news.mockResolvedValue([])
+    reddit.mockResolvedValue([])
+    rss.mockImplementation(later(3000, [article('Late but real headline')]))
+    gdelt.mockImplementation(never)
+
+    const promise = aggregateSentiment(null, null)
+    await vi.advanceTimersByTimeAsync(5001)
+    const result = await promise
+
+    expect(result.dataMode).toBe('live')
+    expect(result.apiSources).toEqual(['RSS'])
+  })
+})
