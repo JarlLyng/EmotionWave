@@ -23,7 +23,8 @@
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
     "test": "vitest run",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "audit:ci": "node scripts/audit.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.1",

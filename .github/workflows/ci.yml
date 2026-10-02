@@ -32,5 +32,5 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Audit (high and critical only)
-        run: npm audit --audit-level=high
+      - name: Audit (high and critical only, see scripts/audit.mjs)
+        run: npm run audit:ci
