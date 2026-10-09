@@ -11,6 +11,20 @@ const ALLOWLIST = {
   // node-forge to generate self-signed dev certificates and never verifies
   // signatures. Not part of the production build.
   'GHSA-86w9-cpqp-85rv': 'node-forge via listhen, dev server only, no fix released',
+
+  // braces stack exhaustion on deeply nested patterns. No patched release
+  // exists. Only reached through nitropack's globby at build time, matching
+  // this project's own file globs, never user input. Not in the build output.
+  'GHSA-vfj7-8cjw-p6xm': 'braces via nitropack globby, build time only, no fix released',
+
+  // simple-git command execution guards. Fixed only in simple-git 4, which
+  // drops the default export that @nuxt/devtools 3.x imports, so it cannot be
+  // forced. Only reached through @nuxt/devtools, which nuxt.config disables,
+  // and never part of the production build.
+  'GHSA-x6jw-m9v5-85vh': 'simple-git via @nuxt/devtools (disabled), fix needs devtools 4',
+  'GHSA-g4wm-2vf7-vfgr': 'simple-git via @nuxt/devtools (disabled), fix needs devtools 4',
+  'GHSA-858h-whjf-mvg5': 'simple-git via @nuxt/devtools (disabled), fix needs devtools 4',
+  'GHSA-v5rq-49vh-5v5c': '@simple-git/argv-parser via @nuxt/devtools (disabled), fix needs devtools 4',
 }
 
 const BLOCKING_SEVERITIES = new Set(['high', 'critical'])
