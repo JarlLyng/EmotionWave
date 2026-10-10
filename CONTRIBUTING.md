@@ -24,6 +24,8 @@ For detailed information, see:
 
 ## 🎨 Code Style
 
+The full set of conventions, including the server time budget and test rules, lives in [AGENTS.md](./AGENTS.md).
+
 ### TypeScript
 - Use TypeScript for all new code
 - Provide proper type annotations
@@ -38,7 +40,7 @@ For detailed information, see:
 ### Composables
 - Use composables for reusable logic
 - Return reactive refs, not plain values
-- Clean up resources in `onUnmounted` hooks
+- Return start/stop functions instead of registering lifecycle hooks; the component calls them from `onMounted` and `onUnmounted`
 
 ### Styling
 - Use TailwindCSS utility classes
