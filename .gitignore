@@ -23,3 +23,8 @@ logs_result.json
 .DS_Store
 .fleet
 .idea
+
+# Tool-specific agent config stays local; AGENTS.md is the shared one
+.cursor/
+.claude/
+.windsurf/
