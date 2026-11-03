@@ -267,7 +267,6 @@ EmotionWave/
 ├── AGENTS.md                  # Conventions for contributors and AI agents
 ├── app.vue                    # Root component (global styles, page shell)
 ├── nuxt.config.ts             # Nuxt configuration
-├── tailwind.config.js         # TailwindCSS configuration
 ├── tsconfig.json              # TypeScript configuration
 └── package.json               # Dependencies and scripts
 ```

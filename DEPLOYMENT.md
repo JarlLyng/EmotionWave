@@ -45,7 +45,7 @@ For full control over infrastructure.
 
 ### Requirements
 
-- Node.js 20.x or higher
+- Node.js 22 (the version CI uses)
 - npm or yarn
 - Web server (nginx, Apache, or similar)
 
@@ -92,7 +92,7 @@ See [CONFIGURATION.md](./CONFIGURATION.md) for detailed environment variable doc
 
 ### Build Failures
 
-- Check Node.js version (requires 20.x+)
+- Check Node.js version (22, as in CI)
 - Verify all dependencies installed: `npm ci`
 - Check for TypeScript errors: `npm run build`
 - Review Vercel deployment logs
