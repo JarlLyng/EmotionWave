@@ -28,11 +28,13 @@ CI runs lint, typecheck, test, build and audit:ci. `main` is protected and only 
 | `server/api/advanced-sentiment.ts` | The only API endpoint |
 | `server/utils/` | One service per news source, `huggingFaceService`, `sentimentAggregator`, `retry`, zod `schemas` |
 | `server/routes/` | `robots.txt` and `sitemap.xml` |
+| `server/plugins/` | `waitUntil.ts`, which keeps background work alive on Vercel |
 | `scripts/audit.mjs` | The CI audit gate and its allowlist |
 
 ## Server and data
 
 - The endpoint is a `defineCachedEventHandler` with a 30 second cache and a single global key. Every visitor gets the same response.
+- The cache is stale-while-revalidate: an expired entry is served at once and refreshed after the response. On Vercel that refresh only survives because `server/plugins/waitUntil.ts` passes the platform's `waitUntil` to Nitro; without it the function freezes and every refresh comes back empty. Any other work that outlives the response must go through `event.waitUntil` too.
 - Every upstream call takes the caller's `AbortSignal` and goes through `retryWithBackoff(fn, retries, delay, signal)`. It retries network errors and 5xx, and fails fast on any 4xx, 429 included.
 - Sources fail soft: a fetcher catches its own errors and returns `[]`. One slow or broken source must never hold up the others.
 - The time budget lives in `sentimentAggregator.ts`: 7 s in total, a 5 s source phase that closes 1.5 s after the first source delivers articles, then HuggingFace. The endpoint adds a hard 8 s deadline. Fit new work inside that budget instead of extending it, because the serverless function limit is the ceiling.
