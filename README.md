@@ -39,20 +39,13 @@ Exact dependency versions live in [package.json](./package.json).
 - **Live headline display**: Rotating article headlines centered on screen, updating every 5 seconds
 
 ### Audio Experience
-- Generative ambient music using Tone.js with high variation
-- Musical scale changes based on sentiment:
-  - Negative (-1 to -0.5): C minor, low tones
-  - Neutral-negative (-0.5 to 0): Eb major, ambient
-  - Neutral-positive (0 to 0.5): F major, flowing
-  - Positive (0.5 to 1): C major, uplifting
-- **Multiple chord variations**: 4-5 different chord progressions per sentiment range
-- **Varied timing**: Dynamic intervals (3-6 seconds) between musical phrases
-- **Rich melodic content**: Additional notes, arpeggios, and bass lines
-- **Dynamic Timbre**: Instrument character (oscillator/envelope) morphs between textures (Sharp/Soft) based on mood
-- **Dynamic effects**: Filter and reverb adjust based on sentiment with variation
-- Reverb and delay effects for atmospheric sound
+- Generative ambient sound in three Tone.js layers: an evolving FM drone, a filtered noise texture, and bell-like chords with one or two melody notes
+- **Harmony follows the mood**: brighter moods use C pentatonic major, darker moods C pentatonic minor, with 3–4 chord voicings per mood
+- **Emotion-aware**: when emotion data is available, the dominant emotion picks the harmony (joy brightest, surprise light, sadness and disgust subdued, fear and anger darkest); otherwise the sentiment score does
+- **Pacing**: a new phrase roughly every 5–13 seconds, sparser when the mood is negative and more active when it is positive
+- **Continuous shaping**: the mood also moves the drone root, the noise colour, filter cutoffs, timbre, reverb, chorus and delay, all ramped over several seconds
+- Updates while playing when the mood changes
 - Volume control with smooth transitions
-- Reactive music updates when sentiment changes during playback
 - User interaction required to start audio (browser policy)
 
 ### Sentiment Analysis
@@ -89,18 +82,22 @@ Exact dependency versions live in [package.json](./package.json).
 
 ## 📊 Sentiment Visualization Mapping
 
-| Score         | Visual Mood                    | Audio Mood           | Background Color |
-|---------------|--------------------------------|---------------------|------------------|
-| `-1 to -0.5`  | Dark, uneasy, flickering       | C minor, low tones  | Dark gray (#111827) |
-| `-0.5 to 0`   | Cold, rain-like particles      | Eb major, ambient   | Dark blue (#1e3a8a) |
-| `0 to 0.5`    | Neutral, light gradient        | F major, flowing    | Blue (#3b82f6) |
-| `0.5 to 1`    | Warm, bubbling, colorful       | C major, uplifting  | Yellow (#eab308) |
+Without emotion data, the sentiment score alone sets the colour and harmony:
+
+| Score         | Particle colour              | Harmony              |
+|---------------|------------------------------|----------------------|
+| `-1 to -0.5`  | Deep indigo to slate blue    | C pentatonic minor   |
+| `-0.5 to 0`   | Slate blue to cool blue      | C pentatonic minor   |
+| `0 to 0.5`    | Cool blue to teal            | C pentatonic major   |
+| `0.5 to 1`    | Teal to warm gold            | C pentatonic major   |
+
+With emotion data, the palette blends the emotion hues and the dominant emotion picks the harmony instead. Either way, the background is the particle colour at 12% brightness, so it tints with the mood. The drone root (C2, Eb2, G2) and the noise colour (brown, pink, white) switch at scores of -0.3 and 0.3.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 20.x or higher
+- Node.js 22 (the version CI uses)
 - npm or yarn
 
 ### Installation
@@ -161,7 +158,7 @@ The application will be available at `http://localhost:3000`
 ## 🔒 Security
 
 - No sensitive data exposed in client-side code
-- API keys stored as GitHub secrets
+- Optional API keys are environment variables on Vercel, read only on the server
 - Service worker uses secure context
 - HTTPS required for PWA features
 

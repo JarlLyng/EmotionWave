@@ -37,7 +37,7 @@ NUXT_PUBLIC_BASE_URL=/
   - If you get 401/403 errors, your token likely doesn't have the right permissions
 
 **Production**:
-- **GitHub Pages**: Set as repository secrets in GitHub Settings (static hosting only)
+- **GitHub Pages**: Not used. Static hosting can't run the API route, so the keys would never be read; the site falls back to client-side GDELT and demo data
 - **Vercel**: Set in Vercel dashboard (recommended for full functionality)
 - **Self-hosted**: Set in environment or `.env` file
 
@@ -182,10 +182,9 @@ PWA generation is fully delegated to `@vite-pwa/nuxt` (configured in the
 ## TailwindCSS Configuration
 
 ### Customization
-- Configuration in `tailwind.config.js`
-- Custom colors and utilities
-- Responsive breakpoints
-- Dark mode support (if needed)
+- Tailwind 4 is configured in CSS, not in a `tailwind.config.js`
+- `assets/css/main.css` imports Tailwind and holds the few custom utilities
+- Content detection is automatic, so there are no `content` paths to maintain
 
 ## SEO Configuration
 
@@ -258,5 +257,5 @@ npm run preview
 ### Build Issues
 - Clear `.output` and `.nuxt` directories
 - Run `npm ci` for clean install
-- Check Node.js version (20.x+)
+- Check Node.js version (22, as in CI)
 
