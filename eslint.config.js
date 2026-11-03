@@ -10,6 +10,7 @@ const nuxtGlobals = {
   defineNuxtConfig: 'readonly',
   defineEventHandler: 'readonly',
   defineCachedEventHandler: 'readonly',
+  defineNitroPlugin: 'readonly',
   useRuntimeConfig: 'readonly',
   getRequestHeader: 'readonly',
   getRequestURL: 'readonly',

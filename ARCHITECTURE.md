@@ -248,6 +248,8 @@ EmotionWave/
 ├── server/
 │   ├── api/
 │   │   └── advanced-sentiment.ts  # Multi-source sentiment analysis endpoint
+│   ├── plugins/
+│   │   └── waitUntil.ts       # Keeps background cache refreshes alive on Vercel
 │   ├── routes/
 │   │   ├── robots.txt.ts      # Dynamic robots.txt generation
 │   │   └── sitemap.xml.ts     # Dynamic sitemap.xml generation
